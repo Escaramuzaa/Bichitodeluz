@@ -502,7 +502,7 @@ function fmtE4(n){return parseFloat(n).toFixed(4).replace(/\.?0+$/,'')+'\u00a0\u
 function toast(msg,dur){dur=dur||2500;var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},dur);}
 
 function scheduleSync(){if(!getScriptUrl())return;clearTimeout(syncTimer);setSyncStatus('syncing','Guardando\u2026');syncTimer=setTimeout(function(){syncToCloud(true);},2000);}
-function setSyncStatus(state,text){document.getElementById('sync-dot').className='sync-dot '+state;document.getElementById('sync-text').textContent=text;}
+function setSyncStatus(state,text){var dot=document.getElementById('sync-dot');var txt=document.getElementById('sync-text');if(dot)dot.className='sync-dot '+state;if(txt)txt.textContent=text;}
 
 async function syncToCloud(silent){
   var url=getScriptUrl();if(!url){if(!silent)toast('Configura la URL primero');return;}
@@ -525,12 +525,23 @@ async function syncToCloud(silent){
 async function loadFromCloud(){
   var url=getScriptUrl();if(!url)return toast('Configura la URL primero');
   setSyncStatus('syncing','Cargando\u2026');
-  try{var r=await fetch(url+'?action=getAll',{redirect:'follow'});var d=await r.json();if(d.error)throw new Error(d.error);
-    DB.materias=d.materias||[];
-    DB.articulos=(d.articulos||[]).map(function(a){if(typeof a.ingredientes==='string'){try{a.ingredientes=JSON.parse(a.ingredientes);}catch(e){a.ingredientes=[];}}return a;});
+  try{
+    var r=await fetch(url+'?action=getAll',{redirect:'follow'});
+    var d=await r.json();
+    if(d.error)throw new Error(d.error);
+    DB.materias=(d.materias||[]).filter(function(m){return m&&m.id;});
+    DB.articulos=(d.articulos||[]).filter(function(a){return a&&a.id;}).map(function(a){
+      if(typeof a.ingredientes==='string'){try{a.ingredientes=JSON.parse(a.ingredientes);}catch(e){a.ingredientes=[];}}
+      if(!Array.isArray(a.ingredientes))a.ingredientes=[];
+      return a;
+    });
     saveLocal();renderMaterias();renderArticulos();renderDashboard();
-    setSyncStatus('ok','Actualizado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));toast('Cargado \u2713');}
-  catch(e){setSyncStatus('error','Error');toast('Error: '+e.message,4000);}
+    setSyncStatus('ok','Actualizado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));
+    toast('Cargado \u2713');
+  }catch(e){
+    setSyncStatus('error','Error: '+e.message.slice(0,40));
+    toast('Error al cargar: '+e.message,5000);
+  }
 }
 async function connectScript(){
   var url=document.getElementById('script-url-input').value.trim();
