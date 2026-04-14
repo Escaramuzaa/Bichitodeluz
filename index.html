@@ -515,7 +515,7 @@ select option{background:var(--surface2)}
 // ═══════════════════════════════════════
 const SUPABASE_URL = 'https://ofistiohrnnlgyomdlsa.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_T-gxoqlt9y7Pp2heWh-vsQ_vroMCewC';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ═══════════════════════════════════════
 // STATE
@@ -550,12 +550,17 @@ async function doLogin(){
   var pass = document.getElementById('login-password').value;
   var btn = document.getElementById('btn-login');
   var err = document.getElementById('login-error');
+  err.textContent='';
   if(!email||!pass)return err.textContent='Completa todos los campos';
   btn.textContent='Entrando…'; btn.disabled=true;
-  var {data,error} = await sb.auth.signInWithPassword({email,password:pass});
-  btn.textContent='Entrar'; btn.disabled=false;
-  if(error){err.textContent=error.message;return;}
-  onLogin(data.user);
+  try{
+    var res = await sb.auth.signInWithPassword({email:email, password:pass});
+    if(res.error) throw res.error;
+    onLogin(res.data.user);
+  }catch(e){
+    err.textContent = e.message||'Error al iniciar sesión';
+    btn.textContent='Entrar'; btn.disabled=false;
+  }
 }
 
 async function doRegister(){
