@@ -418,16 +418,16 @@ var INVOICE_PROMPT = [
   'EXTRAE PRIMERO la fecha de la factura en formato YYYY-MM-DD.',
   '',
   'REGLAS PARA PRECIOS Y CANTIDADES:',
-  '1. precio_total = precio de UNA SOLA unidad de compra (1 bolsa, 1 caja, 1 saco). En facturas Makro usa la columna "Precio" o "Prec.Ud." NO el "Importe" total.',
+  '1. precio_total = precio de UNA SOLA unidad de compra (1 bolsa, 1 caja, 1 saco). En facturas Makro usa la columna Precio o Prec.Ud, NO el Importe total.',
   '   Ejemplo: CROISSANT 20X60G, Prec.Ud=6.69, Cant=2, Importe=13.38 -> precio_total=6.08 (6.69/1.10 sin IVA 10%)',
   '2. cantidad = unidades INDIVIDUALES dentro de UNA sola unidad de compra.',
   '   Ejemplo: 1 caja de 20 croissants -> cantidad=20, unidad=ud',
   '   Ejemplo: 1 botella 1.5L -> cantidad=1.5, unidad=L',
   '3. IVA Makro: columna IMP indica 1=10%, 2=21%, 5=4%. Divide el precio entre 1.10, 1.21 o 1.04.',
-  '4. detalle: SIEMPRE describe el formato (ej: "1 caja x 20 ud x 60g", "1 bot x 1.5L").',
+  '4. detalle: describe el formato (ej: 1 caja x 20 ud x 60g, 1 bot x 1.5L).',
   '5. Ignora productos de limpieza, material, envases, guantes.',
   '',
-  'Responde SOLO con JSON valido:',
+  'Responde SOLO con JSON valido sin texto extra:',
   '{"fecha":"YYYY-MM-DD","productos":[{"nombre":"string","cantidad":number,"unidad":"kg o g o L o mL o ud o docena","precio_total":number,"confianza":"alta o media o baja","detalle":"string"}],"nota":"string"}'
 ].join('\n');
 
@@ -466,7 +466,16 @@ async function processFiles(files){
       var result=await analyzeSingleFile(files[i],key);
       if(result&&result.productos&&result.productos.length>0){
         var fd=result.fecha||new Date().toISOString().slice(0,10);
-        result.productos.forEach(function(p,j){invoiceItems.push(Object.assign({},p,{_id:'inv_'+i+'_'+j,_selected:true,_source:files[i].name,_fecha:fd}));});
+        result.productos.forEach(function(p,j){// Handle both full keys and short keys from Gemini
+        var normalized={
+          nombre:p.nombre||p.n||'',
+          cantidad:p.cantidad||p.c||0,
+          unidad:p.unidad||p.u||'ud',
+          precio_total:p.precio_total||p.p||0,
+          confianza:p.confianza||'alta',
+          detalle:p.detalle||p.d||''
+        };
+        invoiceItems.push(Object.assign({},normalized,{_id:'inv_'+i+'_'+j,_selected:true,_source:files[i].name,_fecha:fd}));});
         statEl.textContent=result.productos.length+' productos';statEl.style.color='var(--accent)';
       } else {statEl.textContent='Sin productos';statEl.style.color='var(--text3)';}
       spinEl.style.animation='none';spinEl.style.borderColor='var(--accent)';spinEl.style.borderTopColor='var(--accent)';
@@ -488,9 +497,9 @@ async function analyzeSingleFile(file,key){
   // For PDFs use file upload approach via inline data
   var bodyObj;
   if(file.type==='application/pdf'){
-    bodyObj={contents:[{parts:[{text:INVOICE_PROMPT},{inlineData:{mimeType:'application/pdf',data:base64}}]}],generationConfig:{temperature:0.1,maxOutputTokens:8000}};
+    bodyObj={contents:[{parts:[{text:INVOICE_PROMPT},{inlineData:{mimeType:'application/pdf',data:base64}}]}],generationConfig:{temperature:0.1,maxOutputTokens:65536}};
   } else {
-    bodyObj={contents:[{parts:[{text:INVOICE_PROMPT},part]}],generationConfig:{temperature:0.1,maxOutputTokens:8000}};
+    bodyObj={contents:[{parts:[{text:INVOICE_PROMPT},part]}],generationConfig:{temperature:0.1,maxOutputTokens:65536}};
   }
   var resp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bodyObj)});
   if(!resp.ok){var e=await resp.json().catch(function(){return{};});var em=e.error&&e.error.message||'Error '+resp.status;console.error('Gemini error:',em,JSON.stringify(e));throw new Error(em);}
