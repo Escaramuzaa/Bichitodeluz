@@ -1430,42 +1430,72 @@ function renderArticulos(){
     wrap.innerHTML='<div class="empty"><div class="empty-icon">☕</div><div class="empty-title">Sin artículos</div><div class="empty-desc">Crea tu primer artículo con sus ingredientes</div></div>';
     count.textContent='';return;
   }
-  var total=DB.articulos.length;
-  count.textContent=total+' artículo'+(total!==1?'s':'');
   var margen=parseInt(document.getElementById('margen-slider')&&document.getElementById('margen-slider').value||65);
   var cats=getArtCats();
 
-  // Agrupar artículos por categoría
+  // Búsqueda
+  var searchEl=document.getElementById('art-search');
+  var q=searchEl?searchEl.value.toLowerCase().trim():'';
+
+  // Matching case-insensitive: encontrar a qué preset corresponde cada categoría
+  function matchCat(artCat){
+    if(!artCat||!artCat.trim())return null;
+    var ac=artCat.trim().toLowerCase();
+    var found=cats.find(function(c){return c.toLowerCase()===ac;});
+    return found||null;
+  }
+
+  // Agrupar artículos — si la categoría no coincide con ningún preset, va a "Sin categoría"
   var groups={};
   cats.forEach(function(c){groups[c]=[];});
   groups['Sin categoría']=[];
   DB.articulos.forEach(function(art){
-    var cat=art.categoria&&art.categoria.trim()?art.categoria.trim():'Sin categoría';
-    if(!groups[cat])groups[cat]=[];
-    groups[cat].push(art);
+    var matched=matchCat(art.categoria);
+    var key=matched||'Sin categoría';
+    groups[key].push(art);
   });
 
-  // Colores por posición de categoría
+  // Filtrar por búsqueda
+  if(q){
+    Object.keys(groups).forEach(function(cat){
+      groups[cat]=groups[cat].filter(function(art){
+        return art.nombre.toLowerCase().includes(q)||(art.categoria||'').toLowerCase().includes(q);
+      });
+    });
+  }
+
+  var total=DB.articulos.length;
+  var visibles=Object.values(groups).reduce(function(s,g){return s+g.length;},0);
+  count.textContent=(q?visibles+' de ':'')+total+' artículo'+(total!==1?'s':'');
+
   var CAT_COLORS=['#c8a96e','#60a5fa','#34d399','#f472b6','#a78bfa','#fb923c','#38bdf8','#f59e0b','#e879f9','#94a3b8'];
 
-  var html='<div style="display:flex;flex-direction:column;gap:1.5rem">';
-  cats.concat(groups['Sin categoría'].length?['Sin categoría']:[]).forEach(function(cat,ci){
+  // Barra de búsqueda
+  var html='<div style="margin-bottom:1rem"><input type="text" id="art-search" value="'+q+'" placeholder="🔍 Buscar artículo…" oninput="renderArticulos()" style="max-width:320px;background:var(--surface2)"></div>';
+  html+='<div style="display:flex;flex-direction:column;gap:1.5rem">';
+
+  var allCats=cats.concat(groups['Sin categoría'].length?['Sin categoría']:[]);
+  allCats.forEach(function(cat,ci){
     var items=groups[cat]||[];
+    // En modo búsqueda mostrar todas aunque estén vacías si hay resultados en ellas
+    if(q&&!items.length)return;
     var color=CAT_COLORS[ci%CAT_COLORS.length];
     var catId='artcat_'+cat.replace(/\W/g,'_');
+    var catOpts=cats.map(function(c){return '<option value="'+c+'"'+(c===cat?' selected':'')+'>'+c+'</option>';}).join('');
+
     html+='<div>'
       +'<div class="art-cat-header" onclick="toggleArtCat(\''+catId+'\')" style="border-left:3px solid '+color+'">'
       +'<span style="font-size:16px">'+getCatEmoji(cat)+'</span>'
-      +'<span class="art-cat-label" style="color:'+color+'">'+cat+'</span>'
-      +'<span class="badge badge-neutral">'+items.length+'</span>'
+      +'<span style="font-size:13px;font-weight:700;color:'+color+';flex:1">'+cat+'</span>'
+      +'<span class="badge badge-neutral" style="margin-right:4px">'+items.length+'</span>'
       +(cat!=='Sin categoría'?'<button class="btn btn-sm btn-ghost" style="padding:3px 8px;font-size:11px" onclick="event.stopPropagation();renameArtCat(\''+cat+'\')">✏</button>':'')
-      +'<span style="font-size:11px;color:var(--text3);transition:transform .2s" id="arr_'+catId+'">▶</span>'
+      +'<span style="font-size:11px;color:var(--text3);transition:transform .2s;transform:rotate(90deg)" id="arr_'+catId+'">▶</span>'
       +'</div>'
       +'<div id="'+catId+'" class="art-cat-zone" ondragover="artDragOver(event,\''+cat+'\')" ondragleave="artDragLeave(event)" ondrop="artDrop(event,\''+cat+'\')">'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">';
 
     if(!items.length){
-      html+='<div style="color:var(--text3);font-size:12px;padding:12px;text-align:center;grid-column:1/-1">Arrastrá artículos aquí</div>';
+      html+='<div style="color:var(--text3);font-size:12px;padding:16px;text-align:center;grid-column:1/-1;border:1px dashed var(--border);border-radius:var(--radius-sm)">Arrastrá artículos aquí</div>';
     }else{
       items.forEach(function(art){
         var coste=calcCoste(art.ingredientes);
@@ -1478,23 +1508,27 @@ function renderArticulos(){
           return mp?'<span class="tag" style="font-size:10px">'+titleCase(mp.nombre)+(ing.raciones&&ing.raciones>1?' ÷'+ing.raciones:'')+'</span>':'';
         }).join('')+(art.ingredientes&&art.ingredientes.length>3?'<span style="font-size:10px;color:var(--text3)"> +'+( art.ingredientes.length-3)+'</span>':'');
 
+        // Si el artículo está en "Sin categoría", mostrar selector para moverlo
+        var reasignar=cat==='Sin categoría'?'<select onchange="reasignarArtCat(\''+art.id+'\',this.value)" style="width:100%;background:var(--surface);font-size:11px;padding:4px 6px;border-radius:4px;color:var(--accent);border:1px solid var(--accent);margin-bottom:6px"><option value="">↗ Mover a categoría…</option>'+catOpts+'</select>':'';
+
         html+='<div class="art-card" draggable="true" id="artcard_'+art.id+'" ondragstart="artDragStart(event,\''+art.id+'\')" ondragend="artDragEnd(event)"'
           +' style="background:var(--surface2);border:1px solid var(--border);border-top:2px solid '+color+';border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;gap:8px">'
           +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
           +'<div style="font-weight:600;font-size:14px;color:var(--text);line-height:1.3">'+art.nombre+'</div>'
           +(margenPct!==null?'<span class="badge '+badgeClass+'" style="flex-shrink:0">'+margenPct.toFixed(0)+'%</span>':'')
           +'</div>'
+          +reasignar
           +(tags?'<div>'+tags+'</div>':'<div style="font-size:11px;color:var(--text3)">Sin ingredientes</div>')
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;margin-top:2px">'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px">'
           +'<div style="color:var(--text3)">Coste <span class="mono" style="color:var(--accent)">'+(coste>0?fmtE(coste):'—')+'</span></div>'
           +'<div style="color:var(--text3)">Precio <span class="mono" style="color:var(--text)">'+(pv?fmtE(pv):'—')+'</span></div>'
-          +'<div style="color:var(--text3)">Sugerido <span class="mono" style="color:var(--text2)">'+(sug?fmtE(sug):'—')+'</span></div>'
+          +(sug?'<div style="color:var(--text3)">Sugerido <span class="mono" style="color:var(--text2)">'+fmtE(sug)+'</span></div>':'')
           +'</div>'
-          +'<div style="display:flex;gap:6px;margin-top:4px">'
+          +'<div style="display:flex;gap:6px;margin-top:2px">'
           +'<button class="btn btn-sm" style="flex:1;justify-content:center" onclick="openArticuloModal(\''+art.id+'\')">✏ Editar</button>'
           +'<button class="btn btn-sm btn-danger" onclick="deleteArticulo(\''+art.id+'\')">&times;</button>'
           +'</div>'
-          +'<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:-4px">⠿ Arrastrá para mover</div>'
+          +'<div style="font-size:10px;color:var(--text3);text-align:center;opacity:.5">⠿ arrastrar para mover</div>'
           +'</div>';
       });
     }
@@ -1503,14 +1537,15 @@ function renderArticulos(){
 
   html+='</div>';
   wrap.innerHTML=html;
-  // Expand all by default
-  cats.forEach(function(cat){
-    var catId='artcat_'+cat.replace(/\W/g,'_');
-    var el=document.getElementById(catId);
-    var arr=document.getElementById('arr_'+catId);
-    if(el)el.style.display='block';
-    if(arr)arr.style.transform='rotate(90deg)';
-  });
+}
+async function reasignarArtCat(id,cat){
+  if(!cat)return;
+  var art=DB.articulos.find(function(a){return a.id===id;});
+  if(!art)return;
+  art.categoria=cat;
+  await saveArticulo_SB(art);
+  renderArticulos();renderDashboard();
+  toast('"'+art.nombre+'" movido a '+cat);
 }
 
 function getCatEmoji(cat){
