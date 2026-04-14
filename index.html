@@ -594,7 +594,24 @@ async function processFile(file){
     var contentBlock=isPdf
       ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}}
       :{type:'image',source:{type:'base64',media_type:file.type,data:base64}};
-    var prompt='Eres un asistente especializado en leer facturas de proveedores de hostelería en España.\n\nAnaliza esta factura y extrae TODOS los productos/ingredientes.\nPara cada producto:\n- "nombre": string (limpio, en español)\n- "cantidad": number\n- "unidad": exactamente una de: "kg","g","L","mL","ud","docena"\n- "precio_total": number (euros, sin IVA si aparece separado)\n- "confianza": "alta","media" o "baja"\n\nResponde SOLO con JSON válido, sin texto extra:\n{"productos":[...],"nota":"observaciones opcionales"}';
+    var prompt='Eres un asistente especializado en leer facturas de proveedores de hostelería en España. Tu objetivo es calcular el COSTE UNITARIO MÁS ÚTIL para una cafetería.
+
+REGLAS:
+1. PAQUETES (ej: 2 cajas x 20 croissants): calcula precio por UNIDAD INDIVIDUAL. nombre=ingrediente singular, cantidad=total unidades individuales, unidad=ud, añade detalle='2 cajas x 20 ud'.
+2. LÍQUIDOS: usa siempre L o mL. Si compras 6 botellas 1L: cantidad=6, unidad=L.
+3. SÓLIDOS A GRANEL: usa kg o g. Si compras 2 sacos 5kg: cantidad=10, unidad=kg.
+4. PRECIO: usa siempre sin IVA. Si solo hay con IVA, divide entre 1.10 o 1.21 según corresponda.
+
+Para cada producto:
+- "nombre": string (ingrediente singular limpio)
+- "cantidad": number (total en la unidad indicada)
+- "unidad": exactamente una de: "kg","g","L","mL","ud","docena"
+- "precio_total": number (euros sin IVA)
+- "confianza": "alta","media" o "baja"
+- "detalle": string opcional explicando el formato (ej: "2 cajas x 20 ud")
+
+Responde SOLO con JSON válido sin texto extra:
+{"productos":[...],"nota":"observaciones"}';
     progress.style.width='60%'; statusText.textContent='Analizando con IA…';
     var response=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -662,7 +679,7 @@ function renderInvoiceResults(nota){
     else if(ex) changeTag='<span class="badge badge-info" style="font-size:10px;margin-left:4px">sin cambio</span>';
     var unitOpts=['kg','g','L','mL','ud','docena'].map(function(u){return '<option'+(u===item.unidad?' selected':'')+'>'+u+'</option>';}).join('');
     return '<div class="invoice-item selected" id="iitem-'+item._id+'">'
-      +'<div><input type="text" value="'+item.nombre+'" onchange="updateInvItem(\''+item._id+'\',\'nombre\',this.value)" style="width:100%;border:none;background:transparent;padding:0;font-weight:500">'
+      +'<div><input type="text" value="'+item.nombre+'" onchange="updateInvItem(''+item._id+'','nombre',this.value)" style="width:100%;border:none;background:transparent;padding:0;font-weight:500">'+(item.detalle?'<span style="font-size:10px;color:var(--text3);margin-left:4px;">'+item.detalle+'</span>':'')
       +'<span class="badge '+badgeCls+'" style="font-size:10px;margin-left:4px">'+item.confianza+'</span>'+changeTag+'</div>'
       +'<input type="number" value="'+item.cantidad+'" min="0.001" step="any" onchange="updateInvItem(\''+item._id+'\',\'cantidad\',parseFloat(this.value))" style="text-align:right">'
       +'<select onchange="updateInvItem(\''+item._id+'\',\'unidad\',this.value)">'+unitOpts+'</select>'
