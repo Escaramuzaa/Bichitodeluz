@@ -135,7 +135,7 @@ td{padding:10px 12px;vertical-align:middle}
   <p class="section-desc">Sube facturas o escribe directamente lo que compraste.</p>
   <div id="api-banner" class="banner banner-info">
     <span style="font-size:16px">🔑</span>
-    <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--info)">API key de Gemini requerida</div><div style="font-size:12px;color:var(--text2)">Configura tu clave en ⚙ para activar Gemini 1.5.</div></div>
+    <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--info)">API key de Gemini requerida</div><div style="font-size:12px;color:var(--text2)">Consigue tu clave en Google AI Studio y pégala en ⚙.</div></div>
     <button class="btn btn-info btn-sm" onclick="showSection('config',document.querySelectorAll('.nav-btn')[4])">Configurar</button>
   </div>
 
@@ -246,10 +246,10 @@ td{padding:10px 12px;vertical-align:middle}
     </div>
   </div>
   <div class="card" style="margin-bottom:1rem">
-    <div class="card-header"><span class="card-title">🔑 API key de Gemini (Google)</span></div>
+    <div class="card-header"><span class="card-title">🔑 API key de Gemini (Google AI Studio)</span></div>
     <div class="card-body">
       <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">
-        <div><label>Gemini API Key</label><input type="password" id="api-key-input" placeholder="AIzaSy..."></div>
+        <div><label>Gemini API Key (Debe empezar por AIzaSy...)</label><input type="password" id="api-key-input" placeholder="AIzaSy..."></div>
         <button class="btn btn-primary" onclick="saveApiKey()">Guardar</button>
       </div>
       <div id="api-key-status" style="margin-top:10px;font-size:12px"></div>
@@ -346,7 +346,15 @@ function switchTab(tab){
   document.getElementById('tab-text').classList.toggle('active',tab==='text');
 }
 
-function saveApiKey(){var v=document.getElementById('api-key-input').value.trim();if(!v)return toast('Introduce una API key');localStorage.setItem('cafeteria_api_key',v);loadApiKeyStatus();checkApiBanner();toast('API key guardada \u2713');}
+function saveApiKey(){
+  var v=document.getElementById('api-key-input').value.trim();
+  if(!v)return toast('Introduce una API key');
+  if(!v.startsWith('AIza')) return toast('La clave de Gemini suele empezar por AIzaSy...');
+  localStorage.setItem('cafeteria_api_key',v);
+  loadApiKeyStatus();
+  checkApiBanner();
+  toast('API key guardada \u2713');
+}
 function loadApiKeyStatus(){var k=getApiKey();var el=document.getElementById('api-key-status');var inp=document.getElementById('api-key-input');if(!el)return;if(k){el.innerHTML='<span style="color:var(--accent);font-weight:500">\u2713 Configurada</span> — <button class="btn btn-sm btn-danger" onclick="removeApiKey()">Eliminar</button>';inp.placeholder='Configurada (oculta)';}else{el.textContent='';inp.placeholder='AIzaSy...';}}
 function removeApiKey(){if(!confirm('¿Eliminar?'))return;localStorage.removeItem('cafeteria_api_key');loadApiKeyStatus();checkApiBanner();toast('Eliminada');}
 function checkApiBanner(){var b=document.getElementById('api-banner');if(!b)return;if(getApiKey()){b.className='banner banner-ok';b.innerHTML='<span>\u2713</span><div style="font-size:13px;font-weight:500;color:var(--accent-text)">Lector Gemini activo.</div>';}else{b.className='banner banner-info';b.innerHTML='<span>\uD83D\uDD11</span><div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--info)">API key requerida</div></div><button class="btn btn-info btn-sm" onclick="showSection(\'config\',document.querySelectorAll(\'.nav-btn\')[4])">Configurar</button>';}}
@@ -374,19 +382,23 @@ function renderMaterias(){
 }
 
 // ── GEMINI ──
-var INVOICE_PROMPT = `Extrae datos de esta factura de hostelería.
-INSTRUCCIONES:
-1. NORMALIZA NOMBRES: Traduce nombres raros (ej: "05 CABRAS" -> "Agua 500ml", "C-65 CROIS" -> "Croissant"). Nombres simples que entienda un humano.
-2. PRECIO BOLSA/CAJA: El 'precio_total' es el precio de la unidad comprada (la bolsa entera, la caja entera). SIN IVA.
-3. CANTIDAD INTERNA: En 'cantidad', pon cuántas unidades o litros vienen DENTRO de esa bolsa/caja.
-   Ejemplo: "Bolsa croissant 20ud a 6€" -> nombre: "Croissant", precio_total: 6, cantidad: 20, unidad: "ud".
-4. FECHA: Extrae fecha (YYYY-MM-DD).
-Responde SOLO con JSON:
+var INVOICE_PROMPT = `Actúa como un experto en facturas de hostelería española. 
+INSTRUCCIONES CRÍTICAS:
+1. NORMALIZACIÓN DE NOMBRES: Si el nombre del producto es críptico (ej: "05 CABRAS", "L.ENT.1L", "C-65 CROIS"), transfórmalo en un nombre humano y simple (ej: "Agua 500ml", "Leche Entera", "Croissant"). No me pongas códigos que me mareen.
+2. PRECIO DE COMPRA: El 'precio_total' DEBE ser el precio de la unidad que viene en la factura (la bolsa, la caja, el pack). Sin IVA.
+3. DESGLOSE DE CANTIDAD: En 'cantidad', pon el número de unidades o medidas que vienen DENTRO de esa unidad de compra.
+   Ejemplo: "Bolsa de croissant 20 unidades 6 euros" -> nombre: "Croissant", precio_total: 6, cantidad: 20, unidad: "ud", detalle: "1 bolsa x 20 ud".
+   Ejemplo: "Caja de 6 botellas agua 1.5L a 4 euros" -> nombre: "Agua 1.5L", precio_total: 4, cantidad: 9 (porque 6x1.5=9), unidad: "L", detalle: "Caja 6 bot x 1.5L".
+4. FECHA: Extrae la fecha de la factura (YYYY-MM-DD).
+
+Formato de respuesta estrictamente JSON:
 {"fecha":"YYYY-MM-DD","productos":[{"nombre":"string","cantidad":number,"unidad":"kg|g|L|mL|ud|docena","precio_total":number,"confianza":"alta|media|baja","detalle":"string"}],"nota":"string"}`;
 
-var QT_PROMPT_BASE = `Analiza estas compras:
-Si dice "Bolsa croissant 20ud 6€" -> nombre: "Croissant", precio_total: 6, cantidad: 20, unidad: "ud".
-JSON: {"fecha":"FECHA_HOY","productos":[{"nombre":"string","cantidad":number,"unidad":"kg|g|L|mL|ud|docena","precio_total":number,"confianza":"alta","detalle":"string"}]}`;
+var QT_PROMPT_BASE = `Analiza estas compras escritas por un humano.
+1. Simplifica nombres (ej: "leche" -> "Leche Entera").
+2. Si dice "Bolsa de croissant 20 unidades 6 euros" -> nombre: "Croissant", precio_total: 6, cantidad: 20, unidad: "ud", detalle: "1 bolsa x 20 ud".
+Respuesta estrictamente JSON:
+{"fecha":"FECHA_HOY","productos":[{"nombre":"string","cantidad":number,"unidad":"kg|g|L|mL|ud|docena","precio_total":number,"confianza":"alta","detalle":"string"}]}`;
 
 function dragOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('drag-over');}
 function dragLeave(){document.getElementById('drop-zone').classList.remove('drag-over');}
@@ -428,41 +440,55 @@ async function processFiles(files){
 
 async function analyzeSingleFile(file, key){
   const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Lectura fallida'));r.readAsDataURL(file);});
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  // USAMOS LA API v1 QUE ES MÁS ESTABLE
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
   const payload = {
     contents: [{parts: [{ text: INVOICE_PROMPT }, { inline_data: { mime_type: file.type || 'application/pdf', data: base64 } }]}],
     generationConfig: { response_mime_type: "application/json" }
   };
   const resp=await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
   const d=await resp.json();
-  if(!resp.ok) throw new Error(d.error?.message || 'Error Gemini');
+  if(!resp.ok) {
+      if(d.error?.message?.includes("API key not valid")) throw new Error("API Key inválida. Por favor, revisa la configuración ⚙.");
+      throw new Error(d.error?.message || 'Error Gemini');
+  }
+  if(!d.candidates || d.candidates.length === 0) throw new Error("La IA no devolvió resultados.");
   return JSON.parse(d.candidates[0].content.parts[0].text);
 }
 
 async function processQuickText(){
-  var key=getApiKey();if(!key)return toast('Configura API Key');
-  var inputText=document.getElementById('quick-text').value.trim();if(!inputText)return;
-  var spinner=document.getElementById('qt-spinner'); spinner.style.display='flex';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  var key=getApiKey();
+  if(!key)return toast('Configura API Key en Configuración ⚙');
+  var inputText=document.getElementById('quick-text').value.trim();
+  if(!inputText)return toast('Escribe los productos primero');
+  var spinner=document.getElementById('qt-spinner'); 
+  spinner.style.display='flex';
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
   const today=new Date().toISOString().slice(0,10);
   const payload = {
-    contents: [{ parts: [{ text: QT_PROMPT_BASE.replace('FECHA_HOY',today) + '\nTexto: ' + inputText }] }],
+    contents: [{ parts: [{ text: QT_PROMPT_BASE.replace('FECHA_HOY',today) + '\nTexto del usuario: ' + inputText }] }],
     generationConfig: { response_mime_type: "application/json" }
   };
   try{
     const resp=await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
     const d=await resp.json();
+    if(!resp.ok) throw new Error(d.error?.message || 'Error en la API');
+    if(!d.candidates || d.candidates.length === 0) throw new Error("Sin respuesta de Gemini");
+    
     const parsed = JSON.parse(d.candidates[0].content.parts[0].text);
     invoiceItems=parsed.productos.map((p,i)=>Object.assign({},p,{_id:'qt_'+i,_selected:true,_source:'Manual',_fecha:parsed.fecha||today}));
     spinner.style.display='none'; renderInvoiceResults(); document.getElementById('invoice-results').style.display='block';
-  }catch(e){spinner.style.display='none'; toast('Error: '+e.message, 5000);}
+  }catch(e){
+    spinner.style.display='none'; 
+    toast('Error: '+e.message, 5000);
+  }
 }
 
 function renderInvoiceResults(){
   var list=document.getElementById('invoice-items-list');var alertEl=document.getElementById('price-changes-alert');
   var subidas=[];var bajadas=[];
   invoiceItems.forEach(item=>{var ex=DB.materias.find(m=>m.nombre.toLowerCase()===item.nombre.toLowerCase());if(ex&&item.precio_total&&item.cantidad){var nu=item.precio_total/item.cantidad;var diff=nu-ex.costeUnit;if(Math.abs(diff)>0.001){var pct=(diff/ex.costeUnit*100).toFixed(1);if(diff>0)subidas.push({nombre:item.nombre,pct});else bajadas.push({nombre:item.nombre,pct});item._pct=parseFloat(pct);}}});
-  if(subidas.length||bajadas.length){alertEl.style.display='flex';alertEl.innerHTML='Subidas: '+subidas.map(s=>s.nombre+' (+'+s.pct+'%)').join(', ');}else{alertEl.style.display='none';}
+  if(subidas.length||bajadas.length){alertEl.style.display='flex';alertEl.innerHTML='Cambios detectados: ' + subidas.map(s=>'⬆ '+s.nombre).join(', ');}else{alertEl.style.display='none';}
   list.innerHTML=invoiceItems.map(item=>{
     var eid='iitem_'+item._id.replace(/[^a-z0-9]/gi,'_');
     var uopts=['kg','g','L','mL','ud','docena'].map(u=>'<option'+(u===item.unidad?' selected':'')+'>'+u+'</option>').join('');
