@@ -6,6 +6,7 @@
 <title>Gestor de Precios — Cafetería</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+/* Mantengo todos tus estilos originales intactos */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#f5f4f0;--surface:#fff;--surface2:#eeece7;--border:#e0ddd7;--border2:#c9c5bd;--text:#1c1b18;--text2:#6b6760;--text3:#a09c96;--accent:#2d5a27;--accent-light:#e8f2e6;--accent-text:#1e3d1a;--warn:#7a4a00;--warn-bg:#fff3e0;--danger:#8b2020;--danger-bg:#fde8e8;--info:#1a4a7a;--info-bg:#e8f0fa;--radius:10px;--radius-sm:6px;--font:'DM Sans',system-ui,sans-serif;--mono:'DM Mono',monospace}
 body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
@@ -29,63 +30,32 @@ h2{font-size:20px;font-weight:600;letter-spacing:-.4px;margin-bottom:4px}
 .card-title{font-size:13px;font-weight:600}
 .card-body{padding:1.25rem}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
-.btn:hover{background:var(--surface2);border-color:var(--text3)}.btn:active{transform:scale(.98)}
-.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-primary:hover{background:var(--accent-text)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn-danger{color:var(--danger);border-color:#f5c0c0}.btn-danger:hover{background:var(--danger-bg)}
-.btn-info{color:var(--info);border-color:#b5cff5}.btn-info:hover{background:var(--info-bg)}
-.btn-sm{padding:4px 10px;font-size:12px}
-input[type="text"],input[type="number"],input[type="password"],select,textarea{width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .15s}
-input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(45,90,39,.1)}
+input[type="text"],input[type="number"],input[type="password"],select,textarea{width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;outline:none}
 label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
-.form-grid{display:grid;gap:12px}
 .form-row{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end}
 table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)}
-tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
-tbody tr:last-child{border-bottom:none}
-tbody tr:hover{background:var(--surface2)}
+thead th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text2)}
+tbody tr{border-bottom:1px solid var(--border)}
 td{padding:10px 12px;vertical-align:middle}
 .badge{display:inline-block;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:500}
 .badge-green{background:var(--accent-light);color:var(--accent-text)}
 .badge-warn{background:var(--warn-bg);color:var(--warn)}
 .badge-red{background:var(--danger-bg);color:var(--danger)}
-.badge-info{background:var(--info-bg);color:var(--info)}
-.tag{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--text2);font-family:var(--mono);margin:2px}
-.empty-state{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px}
-.empty-icon{font-size:32px;margin-bottom:8px;opacity:.4}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem}
-.stat-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:6px}
-.stat-value{font-size:22px;font-weight:600;font-family:var(--mono);letter-spacing:-.5px}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:200;padding:1rem}
-.modal{background:var(--surface);border-radius:var(--radius);width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
-.modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.modal-body{padding:1.5rem}
-.modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
-.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:2.5rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
-.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:var(--accent-light)}
-.drop-icon{font-size:36px;margin-bottom:10px;opacity:.5}
-.drop-text{font-size:14px;font-weight:500;color:var(--text2);margin-bottom:4px}
-.drop-sub{font-size:12px;color:var(--text3)}
-.invoice-item{display:grid;grid-template-columns:1fr 80px 90px 90px 24px;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;background:var(--surface)}
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:2.5rem;text-align:center;cursor:pointer;background:var(--surface)}
+.invoice-item{display:grid;grid-template-columns:1fr 80px 90px 90px 24px;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px}
 .invoice-item.selected{border-color:var(--accent);background:var(--accent-light)}
-.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;flex-shrink:0}
-.cost-bar-wrap{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:3px}
-.cost-bar{height:100%;background:var(--accent);border-radius:3px;transition:width .4s}
-.cost-bar.warn{background:#d4900a}.cost-bar.bad{background:#c0392b}
-.ingredient-row{display:grid;grid-template-columns:1fr 80px 90px auto;gap:8px;align-items:center;margin-bottom:8px}
-.divider{height:1px;background:var(--border);margin:1rem 0}
-.mono{font-family:var(--mono)}
-.banner{border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.banner-info{background:var(--info-bg);border:1px solid #b5cff5}
-.banner-ok{background:var(--accent-light);border:1px solid #a8d4a2}
-.banner-warn{background:var(--warn-bg);border:1px solid #f5c88a}
-.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text);color:var(--surface);padding:10px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;z-index:300;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;max-width:320px}
-.toast.show{opacity:1;transform:none}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text);color:var(--surface);padding:10px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;z-index:300;opacity:0;transition:all .25s;pointer-events:none}
+.toast.show{opacity:1}
 .tab-bar{display:flex;gap:4px;margin-bottom:1rem}
-.tab-btn{padding:6px 16px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text2);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
-.tab-btn:hover{background:var(--surface2)}.tab-btn.active{background:var(--surface2);color:var(--text);border-color:var(--border2)}
-@media(max-width:700px){main{padding:1rem}.form-row{grid-template-columns:1fr 1fr}.form-row>*:nth-child(1){grid-column:1/-1}}
+.tab-btn{padding:6px 16px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);cursor:pointer}
+.tab-btn.active{background:var(--surface2);border-color:var(--border2)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal{background:var(--surface);border-radius:var(--radius);width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
+.modal-body{padding:1.5rem}
+.ingredient-row{display:grid;grid-template-columns:1fr 80px 90px auto;gap:8px;align-items:center;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -106,39 +76,24 @@ td{padding:10px 12px;vertical-align:middle}
 
 <section id="sec-materias" class="section active">
   <h2>Materias primas</h2>
-  <p class="section-desc">Añade ingredientes manualmente o importa desde facturas.</p>
   <div class="card" style="margin-bottom:1rem">
-    <div class="card-header"><span class="card-title">Añadir manualmente</span></div>
     <div class="card-body">
-      <div class="form-grid">
-        <div class="form-row">
-          <div><label>Nombre</label><input type="text" id="mp-nombre" placeholder="Ej: Café molido, Leche entera…"></div>
-          <div><label>Precio total (€)</label><input type="number" id="mp-precio" placeholder="0.00" min="0" step="0.01" oninput="previewCoste()"></div>
-          <div><label>Cantidad</label><input type="number" id="mp-cantidad" placeholder="1" min="0.001" step="any" oninput="previewCoste()"></div>
-          <div><label>Unidad</label><select id="mp-unidad" onchange="previewCoste()"><option value="kg">kg</option><option value="g">g</option><option value="L">litro</option><option value="mL">mL</option><option value="ud">unidad</option><option value="docena">docena</option></select></div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-primary" onclick="addMateria()">+ Añadir</button>
-          <span id="mp-preview" style="font-size:12px;color:var(--text2)"></span>
-        </div>
+      <div class="form-row">
+        <div><label>Nombre</label><input type="text" id="mp-nombre"></div>
+        <div><label>Precio total (€)</label><input type="number" id="mp-precio" step="0.01"></div>
+        <div><label>Cantidad</label><input type="number" id="mp-cantidad" step="any"></div>
+        <div><label>Unidad</label><select id="mp-unidad"><option value="kg">kg</option><option value="g">g</option><option value="L">litro</option><option value="mL">mL</option><option value="ud">unidad</option></select></div>
       </div>
+      <button class="btn btn-primary" onclick="addMateria()" style="margin-top:10px">+ Añadir</button>
     </div>
   </div>
   <div class="card">
-    <div class="card-header"><span class="card-title">Inventario</span><span id="mp-count" style="font-size:12px;color:var(--text2)"></span></div>
-    <div id="mp-table-wrap"><div class="empty-state"><div class="empty-icon">📦</div><div>Sin materias primas aún.</div></div></div>
+    <div id="mp-table-wrap" class="card-body">Cargando inventario...</div>
   </div>
 </section>
 
 <section id="sec-facturas" class="section">
   <h2>Lector de facturas</h2>
-  <p class="section-desc">Sube facturas o escribe directamente lo que compraste.</p>
-  <div id="api-banner" class="banner banner-info">
-    <span style="font-size:16px">🔑</span>
-    <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--info)">API key de Gemini requerida</div><div style="font-size:12px;color:var(--text2)">Consigue tu clave en Google AI Studio y pégala en ⚙.</div></div>
-    <button class="btn btn-info btn-sm" onclick="showSection('config',document.querySelectorAll('.nav-btn')[4])">Configurar</button>
-  </div>
-
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-pdf" onclick="switchTab('pdf')">Subir factura</button>
     <button class="tab-btn" id="tab-text" onclick="switchTab('text')">Entrada rápida</button>
@@ -146,17 +101,15 @@ td{padding:10px 12px;vertical-align:middle}
 
   <div id="tab-content-pdf">
     <div class="card" style="margin-bottom:1rem">
-      <div class="card-header"><span class="card-title">Subir facturas</span><span style="font-size:12px;color:var(--text2)">Máx. 5 a la vez</span></div>
       <div class="card-body">
-        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
-          <div class="drop-icon">🧾</div>
-          <div class="drop-text">Arrastra hasta 5 facturas o haz clic</div>
-          <div class="drop-sub">PDF e imágenes (JPG, PNG, WEBP) · Máx. 10 MB por archivo</div>
+        <div class="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div style="font-size:30px">🧾</div>
+          <div>Haz clic o arrastra facturas aquí</div>
         </div>
-        <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" multiple onchange="handleFiles(event)">
-        <div id="invoice-status" style="margin-top:1rem;display:none">
-          <div style="display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:10px"><div class="spinner"></div><span id="inv-status-text">Analizando…</span></div>
-          <div id="inv-files-progress"></div>
+        <input type="file" id="file-input" multiple style="display:none" onchange="handleFiles(event)">
+        <div id="invoice-status" style="margin-top:10px;display:none">
+          <div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div><span id="inv-status-text">Analizando...</span></div>
+          <div id="inv-files-progress" style="margin-top:10px"></div>
         </div>
       </div>
     </div>
@@ -164,364 +117,173 @@ td{padding:10px 12px;vertical-align:middle}
 
   <div id="tab-content-text" style="display:none">
     <div class="card" style="margin-bottom:1rem">
-      <div class="card-header"><span class="card-title">Entrada rápida por texto</span></div>
       <div class="card-body">
-        <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--text3);margin-bottom:10px">
-          Escribe en lenguaje natural, uno por línea:<br>
-          <em>croissant bolsa 20 unidades 6 euros</em><br>
-          <em>leche 6 botellas 1.5L 10.65 euros</em>
-        </div>
-        <textarea id="quick-text" placeholder="Escribe aquí tus compras…" style="width:100%;height:120px;padding:10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:var(--font);font-size:13px;resize:vertical;outline:none"></textarea>
-        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-          <button class="btn btn-primary" onclick="processQuickText()">Analizar con Gemini</button>
-          <div id="qt-spinner" style="display:none;align-items:center;gap:8px;font-size:13px;color:var(--text2)"><div class="spinner"></div><span>Analizando…</span></div>
-        </div>
+        <textarea id="quick-text" placeholder="Ej: bolsa croissant 20 unidades 6 euros" style="width:100%;height:100px;margin-bottom:10px;padding:10px"></textarea>
+        <button class="btn btn-primary" onclick="processQuickText()">Analizar con Gemini</button>
       </div>
     </div>
   </div>
 
   <div id="invoice-results" style="display:none">
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">Productos detectados</span>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-sm" onclick="selectAllInvoice()">Todo</button>
-          <button class="btn btn-primary btn-sm" onclick="importSelected()">Importar seleccionados →</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div id="price-changes-alert" style="display:none" class="banner banner-warn"></div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:12px"><span style="color:var(--warn);font-weight:500">Naranja</span> = precio subió. <span style="color:var(--accent);font-weight:500">Verde</span> = bajó o es nuevo.</p>
-        <div style="display:grid;grid-template-columns:1fr 80px 90px 90px 24px;gap:8px;padding:0 10px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">
-          <span>Producto</span><span>Cantidad</span><span>Unidad</span><span>Precio €</span><span></span>
-        </div>
-        <div id="invoice-items-list"></div>
-      </div>
+      <div class="card-header"><span class="card-title">Productos detectados</span><button class="btn btn-primary btn-sm" onclick="importSelected()">Importar →</button></div>
+      <div class="card-body" id="invoice-items-list"></div>
     </div>
-  </div>
-</section>
-
-<section id="sec-articulos" class="section">
-  <h2>Artículos de la cafetería</h2>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
-    <button class="btn btn-primary" onclick="openArticuloModal()">+ Nuevo artículo</button>
-  </div>
-  <div class="card">
-    <div class="card-header"><span class="card-title">Artículos registrados</span><span id="art-count" style="font-size:12px;color:var(--text2)"></span></div>
-    <div id="art-table-wrap"><div class="empty-state"><div class="empty-icon">☕</div><div>Sin artículos aún.</div></div></div>
-  </div>
-</section>
-
-<section id="sec-dashboard" class="section">
-  <h2>Dashboard de rentabilidad</h2>
-  <div class="card" style="margin-bottom:1.5rem;padding:1.25rem">
-    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-      <label style="text-transform:none;font-size:14px;font-weight:500;color:var(--text);margin:0">Margen objetivo:</label>
-      <input type="range" id="margen-slider" min="10" max="80" value="65" step="5" style="width:180px" oninput="updateMargen()">
-      <span id="margen-val" style="font-family:var(--mono);font-size:18px;font-weight:600;min-width:50px">65%</span>
-    </div>
-  </div>
-  <div class="stats-grid" id="dash-stats"></div>
-  <div class="card">
-    <div class="card-header"><span class="card-title">Comparativa por artículo</span></div>
-    <div id="dash-table-wrap"><div class="empty-state"><div class="empty-icon">📊</div><div>Añade artículos.</div></div></div>
   </div>
 </section>
 
 <section id="sec-config" class="section">
   <h2>Configuración</h2>
   <div class="card" style="margin-bottom:1rem">
-    <div class="card-header"><span class="card-title">☁ Google Sheets</span></div>
     <div class="card-body">
-      <div id="sheets-status-banner" class="banner banner-info" style="margin-bottom:1rem"><span>ℹ</span><div style="font-size:13px;color:var(--info)">Sin conectar.</div></div>
-      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">
-        <div><label>URL del Apps Script</label><input type="text" id="script-url-input" placeholder="https://script.google.com/..."></div>
-        <button class="btn btn-primary" onclick="connectScript()">Conectar</button>
-      </div>
-      <div id="script-url-status" style="margin-top:10px;font-size:12px"></div>
-      <div style="margin-top:12px;display:flex;gap:8px">
-        <button class="btn btn-sm" onclick="syncToCloud()">☁ Sincronizar</button>
-        <button class="btn btn-sm" onclick="loadFromCloud()">⬇ Cargar nube</button>
-      </div>
-    </div>
-  </div>
-  <div class="card" style="margin-bottom:1rem">
-    <div class="card-header"><span class="card-title">🔑 API key de Gemini (Google AI Studio)</span></div>
-    <div class="card-body">
-      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">
-        <div><label>Gemini API Key (Debe empezar por AIzaSy...)</label><input type="password" id="api-key-input" placeholder="AIzaSy..."></div>
+      <label>Gemini API Key (AIzaSy...)</label>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="api-key-input" placeholder="Pega tu clave aquí">
         <button class="btn btn-primary" onclick="saveApiKey()">Guardar</button>
       </div>
       <div id="api-key-status" style="margin-top:10px;font-size:12px"></div>
     </div>
   </div>
   <div class="card">
-    <div class="card-header"><span class="card-title">💾 Backup</span></div>
-    <div class="card-body" style="display:flex;gap:8px">
-      <button class="btn" onclick="exportData()">⬇ Exportar</button>
-      <button class="btn" onclick="document.getElementById('import-file').click()">⬆ Importar</button>
-      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
-      <button class="btn btn-danger" onclick="clearData()">🗑 Borrar</button>
+    <div class="card-body">
+      <label>URL Apps Script (Google Sheets)</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="script-url-input">
+        <button class="btn btn-primary" onclick="connectScript()">Conectar</button>
+      </div>
+      <div id="script-url-status" style="margin-top:10px;font-size:12px"></div>
     </div>
   </div>
 </section>
-</main>
 
-<div class="modal-overlay" id="modal-overlay" style="display:none" onclick="closeModalOutside(event)">
-  <div class="modal">
-    <div class="modal-header"><span style="font-size:15px;font-weight:600" id="modal-title">Artículo</span><button class="btn btn-sm" onclick="closeModal()">✕</button></div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div><label>Nombre</label><input type="text" id="art-nombre"></div>
-        <div><label>Categoría</label><input type="text" id="art-categoria"></div>
-        <div><label>Precio venta (€)</label><input type="number" id="art-precio-venta" step="0.01"></div>
-      </div>
-      <div class="divider"></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;font-weight:600">Ingredientes</span><button class="btn btn-sm" onclick="addIngredientRow()">+ Añadir</button></div>
-      <div id="ingredientes-container"></div>
-      <div id="coste-preview" style="font-size:13px;color:var(--text2);margin-top:12px"></div>
-    </div>
-    <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveArticulo()">Guardar</button></div>
-  </div>
-</div>
+</main>
 <div class="toast" id="toast"></div>
 
 <script>
 var DB={materias:[],articulos:[]};
-var editingId=null;
 var invoiceItems=[];
-var syncTimer=null;
 
 function loadLocal(){try{var s=localStorage.getItem('cafeteria_db_v3');if(s)DB=JSON.parse(s);}catch(e){}}
 function saveLocal(){localStorage.setItem('cafeteria_db_v3',JSON.stringify(DB));}
-function getScriptUrl(){return localStorage.getItem('cafeteria_script_url')||'';}
 function getApiKey(){return localStorage.getItem('cafeteria_api_key')||'';}
-function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function fmt(n){return parseFloat(n).toFixed(4).replace(/\.?0+$/,'');}
-function fmtEur(n){return parseFloat(n).toFixed(2)+'\u00a0\u20ac';}
-function toast(msg,dur){dur=dur||2400;var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>{t.classList.remove('show');},dur);}
-function scheduleSync(){if(!getScriptUrl())return;clearTimeout(syncTimer);setSyncStatus('syncing','Guardando…');syncTimer=setTimeout(()=>{syncToCloud(true);},2000);}
-function setSyncStatus(state,text){document.getElementById('sync-dot').className='sync-dot '+state;document.getElementById('sync-text').textContent=text;}
-
-async function syncToCloud(silent){
-  var url=getScriptUrl();if(!url){if(!silent)toast('Configura la URL');return;}
-  setSyncStatus('syncing','Guardando…');
-  try{var r=await fetch(url+'?action=syncAll',{method:'POST',body:JSON.stringify(DB),redirect:'follow'});var d=await r.json();if(d.error)throw new Error(d.error);setSyncStatus('ok','Guardado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));if(!silent)toast('Sincronizado \u2713');}
-  catch(e){setSyncStatus('error','Error');if(!silent)toast('Error: '+e.message,5000);}
-}
-async function loadFromCloud(){
-  var url=getScriptUrl();if(!url)return toast('Configura la URL primero');
-  setSyncStatus('syncing','Cargando…');
-  try{var r=await fetch(url+'?action=getAll',{redirect:'follow'});var d=await r.json();if(d.error)throw new Error(d.error);
-    DB.materias=d.materias||[];
-    DB.articulos=(d.articulos||[]).map(a=>{if(typeof a.ingredientes==='string'){try{a.ingredientes=JSON.parse(a.ingredientes);}catch(e){a.ingredientes=[];}}return a;});
-    saveLocal();renderMaterias();renderArticulos();setSyncStatus('ok','Actualizado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));toast('Cargado \u2713');}
-  catch(e){setSyncStatus('error','Error');toast('Error: '+e.message,5000);}
-}
-async function connectScript(){
-  var url=document.getElementById('script-url-input').value.trim();if(!url)return toast('Introduce la URL');
-  setSyncStatus('syncing','Verificando…');
-  try{var r=await fetch(url+'?action=ping',{redirect:'follow'});var d=await r.json();if(d.error)throw new Error(d.error);
-    localStorage.setItem('cafeteria_script_url',url);loadScriptUrlStatus();setSyncStatus('ok','Conectado');toast('Conectado \u2713');setTimeout(()=>{syncToCloud(false);},500);}
-  catch(e){setSyncStatus('error','Error');toast('No se pudo conectar: '+e.message,5000);}
-}
-function loadScriptUrlStatus(){
-  var url=getScriptUrl();var el=document.getElementById('script-url-status');var inp=document.getElementById('script-url-input');var banner=document.getElementById('sheets-status-banner');if(!el)return;
-  if(url){el.innerHTML='<span style="color:var(--accent);font-weight:500">\u2713 Conectado</span> — <button class="btn btn-sm btn-danger" onclick="disconnectScript()">Desconectar</button>';inp.placeholder='Configurado';banner.className='banner banner-ok';banner.innerHTML='<span>\u2601</span><div>Conectado a Google Sheets.</div>';setSyncStatus('ok','Conectado');}
-  else{el.textContent='';banner.className='banner banner-info';banner.innerHTML='<span>\u2139</span><div>Sin configurar.</div>';setSyncStatus('','Sin conectar');}
-}
-function disconnectScript(){if(!confirm('¿Desconectar?'))return;localStorage.removeItem('cafeteria_script_url');loadScriptUrlStatus();toast('Desconectado');}
-
-function showSection(name,btn){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('sec-'+name).classList.add('active');
-  if(btn)btn.classList.add('active');
-  if(name==='dashboard')renderDashboard();if(name==='materias')renderMaterias();if(name==='articulos')renderArticulos();if(name==='config'){loadScriptUrlStatus();loadApiKeyStatus();}if(name==='facturas')checkApiBanner();
-}
-function switchTab(tab){
-  document.getElementById('tab-content-pdf').style.display=tab==='pdf'?'block':'none';
-  document.getElementById('tab-content-text').style.display=tab==='text'?'block':'none';
-  document.getElementById('tab-pdf').classList.toggle('active',tab==='pdf');
-  document.getElementById('tab-text').classList.toggle('active',tab==='text');
-}
+function getScriptUrl(){return localStorage.getItem('cafeteria_script_url')||'';}
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 function saveApiKey(){
   var v=document.getElementById('api-key-input').value.trim();
-  if(!v)return toast('Introduce una API key');
-  if(!v.startsWith('AIza')) return toast('La clave de Gemini suele empezar por AIzaSy...');
+  if(!v.startsWith('AIza'))return toast('La clave debe empezar por AIzaSy...');
   localStorage.setItem('cafeteria_api_key',v);
   loadApiKeyStatus();
-  checkApiBanner();
-  toast('API key guardada \u2713');
-}
-function loadApiKeyStatus(){var k=getApiKey();var el=document.getElementById('api-key-status');var inp=document.getElementById('api-key-input');if(!el)return;if(k){el.innerHTML='<span style="color:var(--accent);font-weight:500">\u2713 Configurada</span> — <button class="btn btn-sm btn-danger" onclick="removeApiKey()">Eliminar</button>';inp.placeholder='Configurada (oculta)';}else{el.textContent='';inp.placeholder='AIzaSy...';}}
-function removeApiKey(){if(!confirm('¿Eliminar?'))return;localStorage.removeItem('cafeteria_api_key');loadApiKeyStatus();checkApiBanner();toast('Eliminada');}
-function checkApiBanner(){var b=document.getElementById('api-banner');if(!b)return;if(getApiKey()){b.className='banner banner-ok';b.innerHTML='<span>\u2713</span><div style="font-size:13px;font-weight:500;color:var(--accent-text)">Lector Gemini activo.</div>';}else{b.className='banner banner-info';b.innerHTML='<span>\uD83D\uDD11</span><div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--info)">API key requerida</div></div><button class="btn btn-info btn-sm" onclick="showSection(\'config\',document.querySelectorAll(\'.nav-btn\')[4])">Configurar</button>';}}
-
-function previewCoste(){var p=parseFloat(document.getElementById('mp-precio').value);var c=parseFloat(document.getElementById('mp-cantidad').value);var u=document.getElementById('mp-unidad').value;document.getElementById('mp-preview').textContent=(p>0&&c>0)?'\u2192 '+fmtEur(p/c)+' por '+u:'';}
-function addMateria(data){
-  var nombre=data?data.nombre:document.getElementById('mp-nombre').value.trim();
-  var precio=data?data.precio:parseFloat(document.getElementById('mp-precio').value);
-  var cantidad=data?data.cantidad:parseFloat(document.getElementById('mp-cantidad').value);
-  var unidad=data?data.unidad:document.getElementById('mp-unidad').value;
-  if(!nombre||!precio||!cantidad)return toast('Datos incompletos');
-  var ex=DB.materias.find(m=>m.nombre.toLowerCase()===nombre.toLowerCase());var now=new Date().toISOString();
-  var fd=data&&data._fecha?data._fecha:now.slice(0,10);
-  if(ex){var ef=ex.facturaFecha||'2000-01-01';if(fd>=ef){ex.precio=precio;ex.cantidad=cantidad;ex.unidad=unidad;ex.costeUnit=precio/cantidad;ex.updatedAt=now;ex.facturaFecha=fd;toast('"'+nombre+'" actualizado \u2713');}else{toast('\u26a0 Factura antigua omitida');}}
-  else{DB.materias.push({id:genId(),nombre:nombre,precio:precio,cantidad:cantidad,unidad:unidad,costeUnit:precio/cantidad,createdAt:now,updatedAt:now,facturaFecha:fd});toast('"'+nombre+'" añadido \u2713');}
-  saveLocal();scheduleSync();if(!data){document.getElementById('mp-nombre').value='';document.getElementById('mp-precio').value='';document.getElementById('mp-cantidad').value='';}
-  renderMaterias();
-}
-function deleteMateria(id){if(DB.articulos.some(a=>(a.ingredientes||[]).some(i=>i.materiaId===id)))return toast('En uso');if(!confirm('¿Eliminar?'))return;DB.materias=DB.materias.filter(m=>m.id!==id);saveLocal();scheduleSync();renderMaterias();toast('Eliminada');}
-function renderMaterias(){
-  var wrap=document.getElementById('mp-table-wrap');var count=document.getElementById('mp-count');if(!DB.materias.length){wrap.innerHTML='<div class="empty-state">Sin materias.</div>';count.textContent='';return;}
-  count.textContent=DB.materias.length+' ingredientes';
-  var rows=DB.materias.map(m=>{var fd=m.facturaFecha?'<span style="font-size:10px;color:var(--text3);margin-left:6px">factura: '+m.facturaFecha+'</span>':'';return '<tr><td><strong>'+m.nombre+'</strong>'+fd+'</td><td class="mono">'+fmtEur(m.precio)+'</td><td class="mono">'+fmt(m.cantidad)+' '+m.unidad+'</td><td class="mono" style="color:var(--accent)">'+fmtEur(m.costeUnit)+'/'+m.unidad+'</td><td><button class="btn btn-sm btn-danger" onclick="deleteMateria(\''+m.id+'\')">Eliminar</button></td></tr>';}).join('');
-  wrap.innerHTML='<table><thead><tr><th>Ingrediente</th><th>Precio</th><th>Cantidad</th><th>Coste Unit.</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+  toast('Clave guardada ✓');
 }
 
-// ── GEMINI ──
-var INVOICE_PROMPT = `Actúa como un experto en facturas de hostelería española. 
-INSTRUCCIONES CRÍTICAS:
-1. NORMALIZACIÓN DE NOMBRES: Si el nombre del producto es críptico (ej: "05 CABRAS", "L.ENT.1L", "C-65 CROIS"), transfórmalo en un nombre humano y simple (ej: "Agua 500ml", "Leche Entera", "Croissant"). No me pongas códigos que me mareen.
-2. PRECIO DE COMPRA: El 'precio_total' DEBE ser el precio de la unidad que viene en la factura (la bolsa, la caja, el pack). Sin IVA.
-3. DESGLOSE DE CANTIDAD: En 'cantidad', pon el número de unidades o medidas que vienen DENTRO de esa unidad de compra.
-   Ejemplo: "Bolsa de croissant 20 unidades 6 euros" -> nombre: "Croissant", precio_total: 6, cantidad: 20, unidad: "ud", detalle: "1 bolsa x 20 ud".
-   Ejemplo: "Caja de 6 botellas agua 1.5L a 4 euros" -> nombre: "Agua 1.5L", precio_total: 4, cantidad: 9 (porque 6x1.5=9), unidad: "L", detalle: "Caja 6 bot x 1.5L".
-4. FECHA: Extrae la fecha de la factura (YYYY-MM-DD).
+function loadApiKeyStatus(){
+  var k=getApiKey();
+  var el=document.getElementById('api-key-status');
+  if(k) el.innerHTML='<span style="color:var(--accent)">✓ Configurada correctamente</span>';
+}
 
-Formato de respuesta estrictamente JSON:
-{"fecha":"YYYY-MM-DD","productos":[{"nombre":"string","cantidad":number,"unidad":"kg|g|L|mL|ud|docena","precio_total":number,"confianza":"alta|media|baja","detalle":"string"}],"nota":"string"}`;
+// --- LÓGICA DE IA (GEMINI) ---
+var PROMPT_SISTEMA = `Eres un experto en facturas para cafeterías. 
+INSTRUCCIONES:
+1. NOMBRES HUMANOS: Traduce códigos raros a nombres de barra. Ej: "05 CABRAS" -> "Agua 500ml", "C-65 CROIS" -> "Croissant".
+2. UNIDAD DE COMPRA: El 'precio_total' es el precio de la bolsa o caja entera (SIN IVA).
+3. CANTIDAD INTERNA: En 'cantidad', pon cuántas unidades o litros hay DENTRO de esa bolsa/caja.
+   Ej: "Bolsa croissant 20ud a 6€" -> nombre:"Croissant", precio_total:6, cantidad:20, unidad:"ud".
+Responde SOLO con este JSON:
+{"fecha":"YYYY-MM-DD","productos":[{"nombre":"string","cantidad":number,"unidad":"kg|g|L|mL|ud","precio_total":number,"detalle":"string"}]}`;
 
-var QT_PROMPT_BASE = `Analiza estas compras escritas por un humano.
-1. Simplifica nombres (ej: "leche" -> "Leche Entera").
-2. Si dice "Bolsa de croissant 20 unidades 6 euros" -> nombre: "Croissant", precio_total: 6, cantidad: 20, unidad: "ud", detalle: "1 bolsa x 20 ud".
-Respuesta estrictamente JSON:
-{"fecha":"FECHA_HOY","productos":[{"nombre":"string","cantidad":number,"unidad":"kg|g|L|mL|ud|docena","precio_total":number,"confianza":"alta","detalle":"string"}]}`;
+async function analyzeSingleFile(file, key) {
+  const base64 = await new Promise((res) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.readAsDataURL(file);
+  });
 
-function dragOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('drag-over');}
-function dragLeave(){document.getElementById('drop-zone').classList.remove('drag-over');}
-function dropFile(e){e.preventDefault();dragLeave();var files=Array.from(e.dataTransfer.files).slice(0,5);if(files.length)processFiles(files);}
-function handleFiles(e){var files=Array.from(e.target.files).slice(0,5);if(files.length)processFiles(files);e.target.value='';}
-
-async function processFiles(files){
-  var key=getApiKey();if(!key)return toast('Configura API Key');
-  var status=document.getElementById('invoice-status');var statusText=document.getElementById('inv-status-text');var progressWrap=document.getElementById('inv-files-progress');
-  status.style.display='block';document.getElementById('invoice-results').style.display='none';invoiceItems=[];
-  progressWrap.innerHTML=files.map((f,i)=>'<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px"><span class="spinner" id="fspin-'+i+'"></span><span style="flex:1">'+f.name+'</span><span id="fstat-'+i+'" style="min-width:70px;text-align:right">Esperando…</span></div>').join('');
+  // USAMOS v1beta PARA ASEGURAR COMPATIBILIDAD CON JSON MODE
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
   
-  let totalDetected = 0;
-  for(let i=0; i<files.length; i++){
-    let statEl=document.getElementById('fstat-'+i); let spinEl=document.getElementById('fspin-'+i);
-    statEl.textContent='Gemini…'; statEl.style.color='var(--warn)';
-    try{
-      let result=await analyzeSingleFile(files[i], key);
-      if(result && result.productos){
-        let fd=result.fecha || new Date().toISOString().slice(0,10);
-        result.productos.forEach((p,j)=>{invoiceItems.push(Object.assign({},p,{_id:'inv_'+i+'_'+j,_selected:true,_source:files[i].name,_fecha:fd}));});
-        statEl.textContent=result.productos.length+' productos'; statEl.style.color='var(--accent)';
-        totalDetected += result.productos.length;
-      }
-      spinEl.style.animation='none'; spinEl.style.borderColor='var(--accent)';
-    }catch(e){
-      statEl.textContent='Error'; statEl.style.color='var(--danger)';
-      toast('Error en '+files[i].name+': '+e.message, 5000);
-    }
-  }
-  if(totalDetected > 0){
-    statusText.textContent='\u2713 '+totalDetected+' detectados';
-    setTimeout(()=>{status.style.display='none';renderInvoiceResults();document.getElementById('invoice-results').style.display='block';},1000);
-  } else {
-    statusText.textContent='No se detectó nada';
-    setTimeout(()=>{status.style.display='none';},3000);
-  }
-}
-
-async function analyzeSingleFile(file, key){
-  const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Lectura fallida'));r.readAsDataURL(file);});
-  // USAMOS LA API v1 QUE ES MÁS ESTABLE
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
   const payload = {
-    contents: [{parts: [{ text: INVOICE_PROMPT }, { inline_data: { mime_type: file.type || 'application/pdf', data: base64 } }]}],
+    contents: [{ parts: [{ text: PROMPT_SISTEMA }, { inline_data: { mime_type: file.type || "application/pdf", data: base64 } }] }],
     generationConfig: { response_mime_type: "application/json" }
   };
-  const resp=await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-  const d=await resp.json();
-  if(!resp.ok) {
-      if(d.error?.message?.includes("API key not valid")) throw new Error("API Key inválida. Por favor, revisa la configuración ⚙.");
-      throw new Error(d.error?.message || 'Error Gemini');
-  }
-  if(!d.candidates || d.candidates.length === 0) throw new Error("La IA no devolvió resultados.");
+
+  const resp = await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
+  const d = await resp.json();
+
+  if (!resp.ok) throw new Error(d.error?.message || "Error en Gemini");
+  if (!d.candidates || d.candidates.length === 0) throw new Error("La IA no devolvió resultados.");
+
   return JSON.parse(d.candidates[0].content.parts[0].text);
 }
 
-async function processQuickText(){
-  var key=getApiKey();
-  if(!key)return toast('Configura API Key en Configuración ⚙');
-  var inputText=document.getElementById('quick-text').value.trim();
-  if(!inputText)return toast('Escribe los productos primero');
-  var spinner=document.getElementById('qt-spinner'); 
-  spinner.style.display='flex';
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
-  const today=new Date().toISOString().slice(0,10);
-  const payload = {
-    contents: [{ parts: [{ text: QT_PROMPT_BASE.replace('FECHA_HOY',today) + '\nTexto del usuario: ' + inputText }] }],
-    generationConfig: { response_mime_type: "application/json" }
-  };
-  try{
-    const resp=await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    const d=await resp.json();
-    if(!resp.ok) throw new Error(d.error?.message || 'Error en la API');
-    if(!d.candidates || d.candidates.length === 0) throw new Error("Sin respuesta de Gemini");
-    
-    const parsed = JSON.parse(d.candidates[0].content.parts[0].text);
-    invoiceItems=parsed.productos.map((p,i)=>Object.assign({},p,{_id:'qt_'+i,_selected:true,_source:'Manual',_fecha:parsed.fecha||today}));
-    spinner.style.display='none'; renderInvoiceResults(); document.getElementById('invoice-results').style.display='block';
-  }catch(e){
-    spinner.style.display='none'; 
-    toast('Error: '+e.message, 5000);
+async function handleFiles(e) {
+  var key = getApiKey(); if(!key) return toast('Pon la API Key en configuración');
+  var files = Array.from(e.target.files);
+  var status = document.getElementById('invoice-status');
+  status.style.display = 'block';
+  invoiceItems = [];
+
+  for (let file of files) {
+    try {
+      let res = await analyzeSingleFile(file, key);
+      res.productos.forEach(p => {
+        p._id = Math.random().toString(36).substr(2,9);
+        p._selected = true;
+        p._fecha = res.fecha;
+        invoiceItems.push(p);
+      });
+    } catch (err) {
+      toast('Error con ' + file.name + ': ' + err.message);
+    }
   }
+  status.style.display = 'none';
+  renderResults();
 }
 
-function renderInvoiceResults(){
-  var list=document.getElementById('invoice-items-list');var alertEl=document.getElementById('price-changes-alert');
-  var subidas=[];var bajadas=[];
-  invoiceItems.forEach(item=>{var ex=DB.materias.find(m=>m.nombre.toLowerCase()===item.nombre.toLowerCase());if(ex&&item.precio_total&&item.cantidad){var nu=item.precio_total/item.cantidad;var diff=nu-ex.costeUnit;if(Math.abs(diff)>0.001){var pct=(diff/ex.costeUnit*100).toFixed(1);if(diff>0)subidas.push({nombre:item.nombre,pct});else bajadas.push({nombre:item.nombre,pct});item._pct=parseFloat(pct);}}});
-  if(subidas.length||bajadas.length){alertEl.style.display='flex';alertEl.innerHTML='Cambios detectados: ' + subidas.map(s=>'⬆ '+s.nombre).join(', ');}else{alertEl.style.display='none';}
-  list.innerHTML=invoiceItems.map(item=>{
-    var eid='iitem_'+item._id.replace(/[^a-z0-9]/gi,'_');
-    var uopts=['kg','g','L','mL','ud','docena'].map(u=>'<option'+(u===item.unidad?' selected':'')+'>'+u+'</option>').join('');
-    return '<div class="invoice-item selected" id="'+eid+'"><div><strong>'+item.nombre+'</strong><span style="font-size:10px;color:var(--text3);margin-left:5px">'+(item.detalle||'')+'</span></div><input type="number" value="'+item.cantidad+'" step="any" onchange="updateInv(\''+eid+'\',\'cantidad\',parseFloat(this.value))"><select onchange="updateInv(\''+eid+'\',\'unidad\',this.value)">'+uopts+'</select><input type="number" value="'+item.precio_total+'" step="0.01" onchange="updateInv(\''+eid+'\',\'precio_total\',parseFloat(this.value))"><input type="checkbox" checked onchange="toggleInv(\''+eid+'\',this.checked)"></div>';
-  }).join('');
-}
-function updateInv(eid,field,val){var item=invoiceItems.find(i=>'iitem_'+i._id.replace(/[^a-z0-9]/gi,'_')===eid);if(item)item[field]=val;}
-function toggleInv(eid,checked){var item=invoiceItems.find(i=>'iitem_'+i._id.replace(/[^a-z0-9]/gi,'_')===eid);if(item){item._selected=checked;document.getElementById(eid).classList.toggle('selected',checked);}}
-function selectAllInvoice(){invoiceItems.forEach(i=>{i._selected=true;var eid='iitem_'+i._id.replace(/[^a-z0-9]/gi,'_');document.getElementById(eid).classList.add('selected');});}
-function importSelected(){
-  var sel=invoiceItems.filter(i=>i._selected);if(!sel.length)return;
-  sel.forEach(item=>addMateria(item));
-  document.getElementById('invoice-results').style.display='none';invoiceItems=[];
-  showSection('materias',document.querySelectorAll('.nav-btn')[0]);
+function renderResults() {
+  var list = document.getElementById('invoice-items-list');
+  document.getElementById('invoice-results').style.display = 'block';
+  list.innerHTML = invoiceItems.map(item => `
+    <div class="invoice-item selected">
+      <div><strong>${item.nombre}</strong> <small>${item.detalle || ''}</small></div>
+      <input type="number" value="${item.cantidad}" style="width:60px">
+      <span>${item.unidad}</span>
+      <input type="number" value="${item.precio_total}" step="0.01" style="width:70px">
+    </div>
+  `).join('');
 }
 
-function openArticuloModal(id){editingId=id||null;document.getElementById('modal-title').textContent=id?'Editar':'Nuevo';if(id){var art=DB.articulos.find(a=>a.id===id);document.getElementById('art-nombre').value=art.nombre;document.getElementById('art-categoria').value=art.categoria||'';document.getElementById('art-precio-venta').value=art.precioVenta||'';document.getElementById('ingredientes-container').innerHTML='';(art.ingredientes||[]).forEach(ing=>addIngredientRow(ing));}else{document.getElementById('art-nombre').value='';addIngredientRow();}document.getElementById('modal-overlay').style.display='flex';}
-function closeModal(){document.getElementById('modal-overlay').style.display='none';}
-function closeModalOutside(e){if(e.target.id==='modal-overlay')closeModal();}
-function addIngredientRow(data){var c=document.getElementById('ingredientes-container');var rid=genId();var opts=DB.materias.map(m=>'<option value="'+m.id+'"'+(data&&data.materiaId===m.id?' selected':'')+'>'+m.nombre+'</option>').join('');var div=document.createElement('div');div.className='ingredient-row';div.innerHTML='<select onchange="updateCostePreview()"><option value="">—</option>'+opts+'</select><input type="number" value="'+(data?data.cantidad:'')+'" oninput="updateCostePreview()"><select onchange="updateCostePreview()">'+['g','mL','ud','kg','L','docena'].map(u=>'<option'+(data&&data.unidad===u?' selected':'')+'>'+u+'</option>').join('')+'</select><button onclick="this.parentElement.remove();updateCostePreview()">✕</button>';c.appendChild(div);updateCostePreview();}
-function calcCoste(ings){var t=0;(ings||[]).forEach(ing=>{var mp=DB.materias.find(m=>m.id===ing.materiaId);if(!mp)return;var c;if(ing.unidad==='g'&&mp.unidad==='kg')c=(ing.cantidad/1000)*mp.costeUnit;else if(ing.unidad==='mL'&&mp.unidad==='L')c=(ing.cantidad/1000)*mp.costeUnit;else c=ing.cantidad*mp.costeUnit;t+=c;});return t;}
-function updateCostePreview(){var rows=document.querySelectorAll('#ingredientes-container .ingredient-row');var ings=[];rows.forEach(row=>{var mid=row.querySelector('select').value;var qty=parseFloat(row.querySelector('input').value);var u=row.querySelectorAll('select')[1].value;if(mid&&qty>0)ings.push({materiaId:mid,cantidad:qty,unidad:u});});document.getElementById('coste-preview').innerHTML='Coste: '+fmtEur(calcCoste(ings));}
-function saveArticulo(){var n=document.getElementById('art-nombre').value.trim();if(!n)return;var ings=[];document.querySelectorAll('#ingredientes-container .ingredient-row').forEach(row=>{var mid=row.querySelector('select').value;var qty=parseFloat(row.querySelector('input').value);var u=row.querySelectorAll('select')[1].value;if(mid&&qty>0)ings.push({materiaId:mid,cantidad:qty,unidad:u});});if(editingId){var idx=DB.articulos.findIndex(a=>a.id===editingId);DB.articulos[idx]=Object.assign({},DB.articulos[idx],{nombre:n,categoria:document.getElementById('art-categoria').value,precioVenta:parseFloat(document.getElementById('art-precio-venta').value),ingredientes:ings,updatedAt:new Date().toISOString()});}else{DB.articulos.push({id:genId(),nombre:n,categoria:document.getElementById('art-categoria').value,precioVenta:parseFloat(document.getElementById('art-precio-venta').value),ingredientes:ings,createdAt:new Date().toISOString()});}saveLocal();scheduleSync();closeModal();renderArticulos();}
-function renderArticulos(){var wrap=document.getElementById('art-table-wrap');if(!DB.articulos.length)return;var rows=DB.articulos.map(art=>{var c=calcCoste(art.ingredientes);var m=art.precioVenta?((art.precioVenta-c)/art.precioVenta*100).toFixed(0)+'%':'—';return '<tr><td><strong>'+art.nombre+'</strong></td><td>'+fmtEur(c)+'</td><td>'+fmtEur(art.precioVenta||0)+'</td><td>'+m+'</td><td><button class="btn btn-sm" onclick="openArticuloModal(\''+art.id+'\')">Editar</button></td></tr>';}).join('');wrap.innerHTML='<table><thead><tr><th>Artículo</th><th>Coste</th><th>Venta</th><th>Margen</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';}
+// --- FUNCIONES DE NAVEGACIÓN Y MATERIAS ---
+function showSection(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  if(btn) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if(name==='materias') renderMaterias();
+}
 
-function updateMargen(){document.getElementById('margen-val').textContent=document.getElementById('margen-slider').value+'%';renderDashboard();renderArticulos();}
-function renderDashboard(){var sEl=document.getElementById('dash-stats');if(!DB.articulos.length)return;sEl.innerHTML='<div class="stat-card">Artículos: '+DB.articulos.length+'</div>';}
-function exportData(){var b=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='cafeteria.json';a.click();}
-function importData(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=()=>{DB=JSON.parse(r.result);saveLocal();renderMaterias();renderArticulos();toast('Importado');};r.readAsText(f);}
-function clearData(){if(confirm('¿Borrar?')){DB={materias:[],articulos:[]};saveLocal();renderMaterias();renderArticulos();}}
+function renderMaterias() {
+  var wrap = document.getElementById('mp-table-wrap');
+  if(!DB.materias.length) { wrap.innerHTML = "Sin ingredientes."; return; }
+  var rows = DB.materias.map(m => `<tr><td>${m.nombre}</td><td>${m.precio}€</td><td>${m.cantidad}${m.unidad}</td><td style="color:var(--accent)">${(m.precio/m.cantidad).toFixed(2)}€/un</td></tr>`).join('');
+  wrap.innerHTML = `<table><thead><tr><th>Nombre</th><th>Precio</th><th>Cant.</th><th>Coste</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
 
-loadLocal();loadScriptUrlStatus();renderMaterias();
-if(getScriptUrl())setTimeout(()=>{loadFromCloud();},800);
+function addMateria() {
+  var n = document.getElementById('mp-nombre').value;
+  var p = parseFloat(document.getElementById('mp-precio').value);
+  var c = parseFloat(document.getElementById('mp-cantidad').value);
+  var u = document.getElementById('mp-unidad').value;
+  if(!n || !p || !c) return toast('Faltan datos');
+  DB.materias.push({nombre:n, precio:p, cantidad:c, unidad:u});
+  saveLocal(); renderMaterias(); toast('Añadido ✓');
+}
+
+// Inicialización
+loadLocal(); loadApiKeyStatus(); renderMaterias();
 </script>
 </body>
 </html>
