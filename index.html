@@ -169,7 +169,9 @@ select option{background:var(--surface2)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── INGREDIENT ROW ── */
-.ing-row{display:grid;grid-template-columns:1fr 80px 90px auto;gap:8px;align-items:center;margin-bottom:8px}
+.ing-row{display:grid;grid-template-columns:1fr 80px 90px 44px 70px auto;gap:8px;align-items:center;margin-bottom:8px}
+.ing-row .raciones-wrap{display:flex;align-items:center;gap:3px}
+.ing-row .raciones-wrap .divider-sym{font-size:13px;color:var(--text3);flex-shrink:0}
 
 /* ── COST BAR ── */
 .cost-bar-wrap{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden;margin-top:4px}
@@ -272,7 +274,7 @@ select option{background:var(--surface2)}
     <div class="card-body">
       <div class="form-row cols-4" style="margin-bottom:12px">
         <div class="field" style="margin:0"><label>Ingrediente</label><input type="text" id="mp-nombre" placeholder="Ej: leche entera, café molido…"></div>
-        <div class="field" style="margin:0"><label>Precio total (€)</label><input type="number" id="mp-precio" placeholder="0.00" min="0" step="0.01" oninput="previewCoste()"></div>
+        <div class="field" style="margin:0"><label>Precio con IVA (€)</label><input type="number" id="mp-precio" placeholder="0.00" min="0" step="0.01" oninput="previewCoste()"></div>
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" id="mp-cantidad" placeholder="1" min="0.001" step="any" oninput="previewCoste()"></div>
         <div class="field" style="margin:0"><label>Unidad</label><select id="mp-unidad" onchange="previewCoste()"><option value="kg">kg</option><option value="g">g</option><option value="L">litro</option><option value="mL">mL</option><option value="ud">unidad</option><option value="docena">docena</option></select></div>
       </div>
@@ -357,7 +359,7 @@ select option{background:var(--surface2)}
       <div class="card-body">
         <div id="price-changes-alert" style="display:none" class="banner banner-warn"></div>
         <div style="display:grid;grid-template-columns:1fr 110px 70px 95px 100px 28px;gap:8px;padding:0 4px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">
-          <span>Producto</span><span>Contenido/ud</span><span>Cant.</span><span>€ caja</span><span>€/unidad</span><span></span>
+          <span>Producto</span><span>Contenido/ud</span><span>Cant.</span><span>€ caja (c/IVA)</span><span>€/unidad</span><span></span>
         </div>
         <div id="invoice-items-list"></div>
         <div id="invoice-note" style="font-size:12px;color:var(--text3);margin-top:8px"></div>
@@ -573,7 +575,7 @@ function renderMaterias(){
     var fd=m.facturaFecha?'<span style="font-size:11px;color:var(--text2);margin-left:8px;font-family:var(--mono)">'+m.facturaFecha+'</span>':'';
     return '<tr><td><strong style="font-weight:500">'+m.nombre+'</strong>'+fd+'</td><td class="mono" style="color:var(--text2)">'+fmtE(m.precio)+'</td><td class="mono" style="color:var(--text2)">'+fmt(m.cantidad)+' '+m.unidad+'</td><td class="mono" style="color:var(--accent);font-weight:500">'+fmtE4(m.costeUnit)+'/'+m.unidad+'</td><td><button class="btn btn-sm btn-danger" onclick="deleteMateria(\''+m.id+'\')">Eliminar</button></td></tr>';
   }).join('');
-  wrap.innerHTML='<table class="data-table"><thead><tr><th>Ingrediente</th><th>Precio compra</th><th>Cantidad</th><th>Coste unitario</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+  wrap.innerHTML='<table class="data-table"><thead><tr><th>Ingrediente</th><th>Precio c/IVA</th><th>Cantidad</th><th>Coste unitario</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
 // ── INVOICE PROMPT ──
@@ -588,9 +590,12 @@ var INVOICE_PROMPT = [
   '   "NATA MONTAR 35% MG ARO 1L" -> "nata montar 35%", "QSO CREMA CB MC 5KG" -> "queso crema",',
   '   "MANTEQUILLA BLOQUE MC 5KG" -> "mantequilla", "LECHE HOST ASTURIANA BT 1.5L" -> "leche"',
   '',
-  '2. precio_caja: precio de UNA sola unidad de compra SIN IVA.',
-  '   En Makro usa columna Prec.Ud (NO el Importe total).',
-  '   IMP=1 divide entre 1.10, IMP=5 entre 1.04, IMP=2 entre 1.21.',
+  '2. precio_caja: precio de UNA sola unidad de compra CON IVA incluido (precio final que paga el cliente).',
+  '   En Makro usa columna Prec.Ud y APLICA el IVA correspondiente:',
+  '   IMP=1 (alimentos basicos 10%): multiplica por 1.10',
+  '   IMP=5 (alimentos frescos 4%): multiplica por 1.04',
+  '   IMP=2 (otros productos 21%): multiplica por 1.21',
+  '   Si la factura ya muestra precio con IVA, usa ese directamente.',
   '',
   '3. cantidad: numero de piezas individuales POR caja/bolsa.',
   '   "20X60G" -> 20. "6 botellas 1.5L" -> 6. "1 saco 5kg" -> 1.',
@@ -608,7 +613,7 @@ var INVOICE_PROMPT = [
 
 var QT_PROMPT_BASE = [
   'Eres un asistente de hosteleria. El usuario describe compras en lenguaje natural.',
-  'nombre: nombre generico en minusculas. precio_caja: precio de UNA sola unidad de compra.',
+  'nombre: nombre generico en minusculas. precio_caja: precio de UNA sola unidad de compra CON IVA incluido.',
   'Si dice "2 bolsas 12 euros" -> precio_caja=6 (12/2). cantidad=piezas por caja.',
   'medida_unitaria + unidad_medida: peso/volumen de cada pieza individual.',
   '',
@@ -773,10 +778,62 @@ function importSelected(){
 function openArticuloModal(id){editingId=id||null;document.getElementById('modal-title').textContent=id?'Editar art\u00edculo':'Nuevo art\u00edculo';['art-nombre','art-categoria','art-precio-venta'].forEach(function(x){document.getElementById(x).value='';});document.getElementById('ing-container').innerHTML='';document.getElementById('coste-preview').textContent='';if(id){var art=DB.articulos.find(function(a){return a.id===id;});document.getElementById('art-nombre').value=art.nombre;document.getElementById('art-categoria').value=art.categoria||'';document.getElementById('art-precio-venta').value=art.precioVenta||'';(art.ingredientes||[]).forEach(function(ing){addIngRow(ing);});}else{addIngRow();}document.getElementById('modal-overlay').style.display='flex';}
 function closeModal(){document.getElementById('modal-overlay').style.display='none';}
 function closeModalOutside(e){if(e.target.id==='modal-overlay')closeModal();}
-function addIngRow(data){var c=document.getElementById('ing-container');if(!DB.materias.length){c.innerHTML='<p style="color:var(--accent);font-size:13px">\u26a0 Primero a\u00f1ade materias primas.</p>';return;}var rid=genId();var opts=DB.materias.slice().sort(function(a,b){return a.nombre.localeCompare(b.nombre);}).map(function(m){return '<option value="'+m.id+'"'+(data&&data.materiaId===m.id?' selected':'')+'>'+m.nombre+' \u2014 '+fmtE4(m.costeUnit)+'/'+m.unidad+'</option>';}).join('');var div=document.createElement('div');div.className='ing-row';div.id='ir-'+rid;div.innerHTML='<select onchange="updateCostePreview()" style="background:var(--surface2)"><option value="">\u2014 Ingrediente \u2014</option>'+opts+'</select><input type="number" placeholder="Cant." min="0" step="any" value="'+(data?data.cantidad:'')+'" oninput="updateCostePreview()" style="background:var(--surface2)"><select onchange="updateCostePreview()" style="background:var(--surface2)">'+['g','mL','ud','kg','L','docena'].map(function(u){return '<option'+(data&&data.unidad===u?' selected':'')+'>'+u+'</option>';}).join('')+'</select><button class="btn btn-sm btn-danger" onclick="this.closest(\'.ing-row\').remove();updateCostePreview()">\u2715</button>';c.appendChild(div);updateCostePreview();}
-function calcCoste(ings){var t=0;(ings||[]).forEach(function(ing){var mp=DB.materias.find(function(m){return m.id===ing.materiaId;});if(!mp)return;var c;if(ing.unidad==='g'&&mp.unidad==='kg')c=(ing.cantidad/1000)*mp.costeUnit;else if(ing.unidad==='mL'&&mp.unidad==='L')c=(ing.cantidad/1000)*mp.costeUnit;else if(ing.unidad==='kg'&&mp.unidad==='g')c=(ing.cantidad*1000)*mp.costeUnit;else if(ing.unidad==='L'&&mp.unidad==='mL')c=(ing.cantidad*1000)*mp.costeUnit;else c=ing.cantidad*mp.costeUnit;t+=c;});return t;}
-function updateCostePreview(){var rows=document.querySelectorAll('#ing-container .ing-row');var ings=[];rows.forEach(function(row){var mid=row.querySelector('select').value;var qty=parseFloat(row.querySelectorAll('input')[0]&&row.querySelectorAll('input')[0].value);var u=row.querySelectorAll('select')[1]&&row.querySelectorAll('select')[1].value;if(mid&&qty>0)ings.push({materiaId:mid,cantidad:qty,unidad:u});});var t=calcCoste(ings);document.getElementById('coste-preview').textContent=t>0?'Coste estimado: '+fmtE(t):'';}
-function saveArticulo(){var nombre=document.getElementById('art-nombre').value.trim();var categoria=document.getElementById('art-categoria').value.trim();var precioVenta=parseFloat(document.getElementById('art-precio-venta').value)||null;if(!nombre)return toast('El art\u00edculo necesita un nombre');var rows=document.querySelectorAll('#ing-container .ing-row');var ings=[];rows.forEach(function(row){var mid=row.querySelector('select').value;var qty=parseFloat(row.querySelectorAll('input')[0]&&row.querySelectorAll('input')[0].value);var u=row.querySelectorAll('select')[1]&&row.querySelectorAll('select')[1].value;if(mid&&qty>0)ings.push({materiaId:mid,cantidad:qty,unidad:u});});var now=new Date().toISOString();if(editingId){var idx=DB.articulos.findIndex(function(a){return a.id===editingId;});DB.articulos[idx]=Object.assign({},DB.articulos[idx],{nombre:nombre,categoria:categoria,precioVenta:precioVenta,ingredientes:ings,updatedAt:now});}else{DB.articulos.push({id:genId(),nombre:nombre,categoria:categoria,precioVenta:precioVenta,ingredientes:ings,createdAt:now,updatedAt:now});}saveLocal();scheduleSync();closeModal();renderArticulos();renderDashboard();toast('"'+nombre+'" guardado \u2713');}
+function addIngRow(data){
+  var c=document.getElementById('ing-container');
+  if(!DB.materias.length){c.innerHTML='<p style="color:var(--accent);font-size:13px">\u26a0 Primero a\u00f1ade materias primas.</p>';return;}
+  // Header labels on first row
+  if(!c.querySelector('.ing-row')){
+    var hdr=document.createElement('div');
+    hdr.style.cssText='display:grid;grid-template-columns:1fr 80px 90px 44px 70px auto;gap:8px;padding:0 0 4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)';
+    hdr.innerHTML='<span>Ingrediente</span><span>Cantidad</span><span>Unidad</span><span style="text-align:center">÷</span><span>Raciones</span><span></span>';
+    hdr.className='ing-header';
+    c.appendChild(hdr);
+  }
+  var rid=genId();
+  var opts=DB.materias.slice().sort(function(a,b){return a.nombre.localeCompare(b.nombre);}).map(function(m){return '<option value="'+m.id+'"'+(data&&data.materiaId===m.id?' selected':'')+'>'+m.nombre+' \u2014 '+fmtE4(m.costeUnit)+'/'+m.unidad+'</option>';}).join('');
+  var raciones=data&&data.raciones?data.raciones:'';
+  var div=document.createElement('div');div.className='ing-row';div.id='ir-'+rid;
+  div.innerHTML=
+    '<select onchange="updateCostePreview()" style="background:var(--surface2)"><option value="">\u2014 Ingrediente \u2014</option>'+opts+'</select>'
+    +'<input type="number" placeholder="Cant." min="0" step="any" value="'+(data?data.cantidad:'')+'" oninput="updateCostePreview()" style="background:var(--surface2)">'
+    +'<select onchange="updateCostePreview()" style="background:var(--surface2)">'+['g','mL','ud','kg','L','docena'].map(function(u){return '<option'+(data&&data.unidad===u?' selected':'')+'>'+u+'</option>';}).join('')+'</select>'
+    +'<div style="text-align:center;color:var(--text3);font-size:15px;line-height:1">÷</div>'
+    +'<input type="number" placeholder="1" min="1" step="1" value="'+raciones+'" title="Número de raciones o porciones que salen de esta cantidad" oninput="updateCostePreview()" style="background:var(--surface2);text-align:center">'
+    +'<button class="btn btn-sm btn-danger" onclick="removeIngRow(this)">\u2715</button>';
+  c.appendChild(div);updateCostePreview();
+}
+function removeIngRow(btn){
+  btn.closest('.ing-row').remove();
+  // Remove header if no rows left
+  var c=document.getElementById('ing-container');
+  if(!c.querySelector('.ing-row')){var h=c.querySelector('.ing-header');if(h)h.remove();}
+  updateCostePreview();
+}
+function calcCoste(ings){var t=0;(ings||[]).forEach(function(ing){var mp=DB.materias.find(function(m){return m.id===ing.materiaId;});if(!mp)return;var c;if(ing.unidad==='g'&&mp.unidad==='kg')c=(ing.cantidad/1000)*mp.costeUnit;else if(ing.unidad==='mL'&&mp.unidad==='L')c=(ing.cantidad/1000)*mp.costeUnit;else if(ing.unidad==='kg'&&mp.unidad==='g')c=(ing.cantidad*1000)*mp.costeUnit;else if(ing.unidad==='L'&&mp.unidad==='mL')c=(ing.cantidad*1000)*mp.costeUnit;else c=ing.cantidad*mp.costeUnit;var raciones=ing.raciones&&ing.raciones>1?ing.raciones:1;t+=c/raciones;});return t;}
+function updateCostePreview(){
+  var rows=document.querySelectorAll('#ing-container .ing-row');
+  var ings=[];var lines=[];
+  rows.forEach(function(row){
+    var selects=row.querySelectorAll('select');
+    var inputs=row.querySelectorAll('input');
+    var mid=selects[0]&&selects[0].value;
+    var qty=parseFloat(inputs[0]&&inputs[0].value);
+    var u=selects[1]&&selects[1].value;
+    var rac=parseFloat(inputs[1]&&inputs[1].value)||1;
+    if(mid&&qty>0){
+      ings.push({materiaId:mid,cantidad:qty,unidad:u,raciones:rac});
+      if(rac>1){var mp=DB.materias.find(function(m){return m.id===mid;});if(mp)lines.push(mp.nombre+': '+qty+u+' ÷ '+rac+' = '+(qty/rac).toFixed(2)+u+'/ración');}
+    }
+  });
+  var t=calcCoste(ings);
+  var prev=document.getElementById('coste-preview');
+  if(t>0){
+    var html='<span style="color:var(--text2)">Coste por ración: </span><span style="color:var(--accent);font-weight:600">'+fmtE(t)+'</span>';
+    if(lines.length)html+='<div style="margin-top:4px;font-size:11px;color:var(--text3)">'+lines.join(' · ')+'</div>';
+    prev.innerHTML=html;
+  }else{prev.innerHTML='';}
+}
+function saveArticulo(){var nombre=document.getElementById('art-nombre').value.trim();var categoria=document.getElementById('art-categoria').value.trim();var precioVenta=parseFloat(document.getElementById('art-precio-venta').value)||null;if(!nombre)return toast('El art\u00edculo necesita un nombre');var rows=document.querySelectorAll('#ing-container .ing-row');var ings=[];rows.forEach(function(row){var selects=row.querySelectorAll('select');var inputs=row.querySelectorAll('input');var mid=selects[0]&&selects[0].value;var qty=parseFloat(inputs[0]&&inputs[0].value);var u=selects[1]&&selects[1].value;var rac=parseFloat(inputs[1]&&inputs[1].value)||1;if(mid&&qty>0)ings.push({materiaId:mid,cantidad:qty,unidad:u,raciones:rac>1?rac:undefined});});var now=new Date().toISOString();if(editingId){var idx=DB.articulos.findIndex(function(a){return a.id===editingId;});DB.articulos[idx]=Object.assign({},DB.articulos[idx],{nombre:nombre,categoria:categoria,precioVenta:precioVenta,ingredientes:ings,updatedAt:now});}else{DB.articulos.push({id:genId(),nombre:nombre,categoria:categoria,precioVenta:precioVenta,ingredientes:ings,createdAt:now,updatedAt:now});}saveLocal();scheduleSync();closeModal();renderArticulos();renderDashboard();toast('"'+nombre+'" guardado \u2713');}
 function deleteArticulo(id){var art=DB.articulos.find(function(a){return a.id===id;});if(!confirm('\u00bfEliminar "'+art.nombre+'"?'))return;DB.articulos=DB.articulos.filter(function(a){return a.id!==id;});saveLocal();scheduleSync();renderArticulos();renderDashboard();toast('Eliminado');}
 function renderArticulos(){
   var wrap=document.getElementById('art-table');var count=document.getElementById('art-count');
@@ -785,7 +842,7 @@ function renderArticulos(){
   var margen=parseInt(document.getElementById('margen-slider')&&document.getElementById('margen-slider').value||65);
   var rows=DB.articulos.map(function(art){
     var coste=calcCoste(art.ingredientes);var sug=coste>0?coste/(1-margen/100):null;
-    var tags=(art.ingredientes||[]).map(function(ing){var mp=DB.materias.find(function(m){return m.id===ing.materiaId;});return mp?'<span class="tag">'+mp.nombre+'</span>':'';}).join('');
+    var tags=(art.ingredientes||[]).map(function(ing){var mp=DB.materias.find(function(m){return m.id===ing.materiaId;});return mp?'<span class="tag">'+mp.nombre+(ing.raciones&&ing.raciones>1?' ÷'+ing.raciones:'')+'</span>':'';}).join('');
     var badge='';if(art.precioVenta&&coste>0){var m=((art.precioVenta-coste)/art.precioVenta*100).toFixed(0);badge='<span class="badge '+(m>=60?'badge-green':m>=40?'badge-amber':'badge-red')+'">'+m+'%</span>';}
     return '<tr>'
       +'<td><strong style="font-weight:500">'+art.nombre+'</strong>'+(art.categoria?'<br><span style="font-size:11px;color:var(--text3)">'+art.categoria+'</span>':'')+'</td>'
