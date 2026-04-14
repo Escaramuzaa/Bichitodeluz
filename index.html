@@ -1141,7 +1141,20 @@ async function processFiles(files){
     }catch(e){statEl.textContent='Error: '+e.message.slice(0,30);statEl.style.color='var(--red-text)';if(spinEl)spinEl.style.display='none';}
   }
   status.style.display='none';
-  if(invoiceItems.length){renderInvoiceResults();document.getElementById('invoice-results').style.display='block';toast('✓ '+invoiceItems.length+' productos detectados');}
+  if(invoiceItems.length){
+    // Paso 2: dedup inteligente con IA
+    if(DB.materias.length>0){
+      statusText.textContent='Comparando con inventario existente…';
+      status.style.display='block';
+      try{
+        invoiceItems=await deduplicarConIA(invoiceItems,key);
+      }catch(e){console.warn('Dedup IA falló, usando dedup local',e);}
+      status.style.display='none';
+    }
+    renderInvoiceResults();
+    document.getElementById('invoice-results').style.display='block';
+    toast('✓ '+invoiceItems.length+' productos detectados');
+  }
   else toast('No se encontraron productos',4000);
 }
 
@@ -1172,6 +1185,84 @@ async function processQuickText(){
     spinner.style.display='none';renderInvoiceResults();document.getElementById('invoice-results').style.display='block';
     toast('✓ '+invoiceItems.length+' producto'+(invoiceItems.length!==1?'s':'')+' detectado'+(invoiceItems.length!==1?'s':''));
   }catch(e){spinner.style.display='none';toast('Error: '+e.message,5000);}
+}
+
+// ═══════════════════════════════════════
+// DEDUP INTELIGENTE CON IA
+// ═══════════════════════════════════════
+async function deduplicarConIA(items, key){
+  // Preparar lista existente resumida
+  var existentes=DB.materias.map(function(m){
+    return {id:m.id, nombre:m.nombre, categoria:m.categoria||'otros', unidad:m.unidad};
+  });
+
+  var prompt=[
+    'Eres un experto en hosteleria. Tu tarea es identificar qué productos NUEVOS ya existen en el inventario actual.',
+    '',
+    'INVENTARIO ACTUAL ('+existentes.length+' productos):',
+    JSON.stringify(existentes),
+    '',
+    'PRODUCTOS NUEVOS DE LA FACTURA ('+items.length+'):',
+    JSON.stringify(items.map(function(i){return {idx:items.indexOf(i), nombre:i.nombre, detalle:i.detalle||''};})),
+    '',
+    'REGLAS:',
+    '- Identifica si un producto nuevo es el MISMO que uno existente, aunque el nombre sea diferente',
+    '- Ejemplos de duplicados: "Sirope Chocolate" = "Sirope De Chocolate", "Pan Molde Brioche" = "Pan De Molde Brioche", "Nata 35%" = "Nata Montar 35%"',
+    '- Si son el mismo producto, usa el nombre existente (del inventario) para mantener consistencia',
+    '- Si es un producto NUEVO que no existe, mantenlo como está',
+    '- Solo marca como duplicado si estás MUY seguro (>90% de certeza)',
+    '',
+    'Responde SOLO con JSON:',
+    '{"matches":[{"idx":number,"existente_id":"string|null","nombre_final":"string","es_nuevo":true|false}]}'
+  ].join('\n');
+
+  var resp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      contents:[{parts:[{text:prompt}]}],
+      generationConfig:{temperature:0,maxOutputTokens:8000}
+    })
+  });
+  if(!resp.ok)throw new Error('API error '+resp.status);
+  var d=await resp.json();
+  var txt=d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts?d.candidates[0].content.parts.map(function(p){return p.text||'';}).join(''):'';
+  var result=parseGeminiJSON(txt);
+
+  if(!result||!result.matches)return items;
+
+  // Aplicar los matches
+  var itemsActualizados=items.slice();
+  var duplicadosEliminados=0;
+  var seenIds={};
+
+  result.matches.forEach(function(m){
+    var item=itemsActualizados[m.idx];
+    if(!item)return;
+
+    if(m.existente_id&&!m.es_nuevo){
+      // Marcar cuál es el existente que se va a actualizar
+      item._matchId=m.existente_id;
+      item._esActualizacion=true;
+      // Usar nombre del existente para consistencia
+      if(m.nombre_final)item.nombre=m.nombre_final;
+      // Si ya procesamos este existente antes (misma factura tiene 2 veces el mismo producto), marcar como duplicado
+      if(seenIds[m.existente_id]){
+        item._duplicadoEnFactura=true;
+        item._selected=false;
+        duplicadosEliminados++;
+      }
+      seenIds[m.existente_id]=true;
+    }else if(m.nombre_final){
+      item.nombre=m.nombre_final;
+    }
+  });
+
+  if(duplicadosEliminados>0){
+    toast('🧠 IA detectó '+duplicadosEliminados+' duplicado'+(duplicadosEliminados!==1?'s':'')+' en la factura',3000);
+  }
+
+  return itemsActualizados;
 }
 
 function parseGeminiJSON(txt){
@@ -1206,6 +1297,11 @@ function renderInvoiceResults(){
   list.innerHTML=invoiceItems.map(function(item){
     var bc=item.confianza==='alta'?'badge-green':item.confianza==='media'?'badge-amber':'badge-neutral';
     var ct='';if(item._pct>0)ct='<span class="badge badge-amber" style="font-size:10px;margin-left:4px">↑ +'+item._pct+'%</span>';else if(item._pct<0)ct='<span class="badge badge-green" style="font-size:10px;margin-left:4px">↓ '+item._pct+'%</span>';
+    // Badge de IA
+    var iaBadge='';
+    if(item._duplicadoEnFactura)iaBadge='<span class="badge badge-neutral" style="font-size:10px;margin-left:4px" title="Duplicado en esta factura">🔁 duplicado</span>';
+    else if(item._esActualizacion)iaBadge='<span class="badge badge-blue" style="font-size:10px;margin-left:4px" title="La IA identificó que ya existe en inventario">🧠 actualiza</span>';
+    else if(item._matchId===undefined&&DB.materias.length>0)iaBadge='<span class="badge badge-green" style="font-size:10px;margin-left:4px">✦ nuevo</span>';
     var src=item._source?'<span style="font-size:10px;color:var(--text2);margin-left:4px;opacity:.6">— '+item._source+'</span>':'';
     var pc=item.precio_caja||0;var cant=item.cantidad||1;
     var medVal=item.medida_unitaria;var medUnit=item.unidad_medida||item.unidad||'ud';
@@ -1215,7 +1311,7 @@ function renderInvoiceResults(){
     return '<div class="inv-item '+(item._selected?'selected':'')+'" id="'+eid+'">'
       +'<div class="inv-item-grid">'
       +'<div><input type="text" value="'+item.nombre+'" onchange="updateInv(\''+eid+'\',\'nombre\',this.value)" style="width:100%;border:none;background:transparent;padding:0;font-weight:500;color:var(--text);font-family:var(--font)">'
-      +'<div style="margin-top:3px"><span class="badge '+bc+'" style="font-size:10px">'+item.confianza+'</span>'+ct+(item.detalle?'<span style="font-size:11px;color:var(--text);opacity:.7;margin-left:6px">'+item.detalle+'</span>':'')+src+'</div></div>'
+      +'<div style="margin-top:3px"><span class="badge '+bc+'" style="font-size:10px">'+item.confianza+'</span>'+ct+iaBadge+(item.detalle?'<span style="font-size:11px;color:var(--text);opacity:.7;margin-left:6px">'+item.detalle+'</span>':'')+src+'</div></div>'
       +'<div style="display:flex;gap:3px"><input type="number" value="'+(medVal||'')+'" min="0" step="any" placeholder="—" onchange="updateInv(\''+eid+'\',\'medida_unitaria\',parseFloat(this.value)||null);recalcCU(\''+eid+'\')" style="width:52px;text-align:right;background:var(--surface2);padding:5px 6px"><select onchange="updateInv(\''+eid+'\',\'unidad_medida\',this.value);recalcCU(\''+eid+'\')" style="background:var(--surface2);padding:5px 4px;flex:1">'+uopts+'</select></div>'
       +'<input type="number" value="'+cant+'" min="0.001" step="any" onchange="updateInv(\''+eid+'\',\'cantidad\',parseFloat(this.value));recalcCU(\''+eid+'\')" style="text-align:right;background:var(--surface2)">'
       +'<input type="number" value="'+pc.toFixed(4)+'" min="0" step="0.0001" onchange="updateInv(\''+eid+'\',\'precio_caja\',parseFloat(this.value));recalcCU(\''+eid+'\')" style="text-align:right;background:var(--surface2)">'
@@ -1239,6 +1335,8 @@ async function importSelected(){
   for(var si=0;si<sel.length;si++){
     var s=sel[si];
     if(!s.nombre||!s.precio_caja||!s.cantidad)continue;
+    // Saltar duplicados detectados por IA dentro de la misma factura
+    if(s._duplicadoEnFactura){skipped++;continue;}
     var fd=s._fecha||now.slice(0,10);
     var pc=s.precio_caja;
     var cant=s.cantidad;
@@ -1253,9 +1351,15 @@ async function importSelected(){
     // Nombre con primera letra mayúscula
     var nombreLimpio=titleCase(s.nombre);
 
-    // Buscar coincidencia — exacta primero, luego fuzzy por nombre normalizado
+    // Buscar coincidencia — primero por ID exacto (de IA), luego fuzzy
     var nombreNorm=normNombre(nombreLimpio);
-    var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===nombreLimpio.toLowerCase();});
+    var ex=null;
+    if(s._matchId){
+      ex=DB.materias.find(function(m){return m.id===s._matchId;});
+    }
+    if(!ex){
+      ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===nombreLimpio.toLowerCase();});
+    }
     if(!ex){
       ex=DB.materias.find(function(m){return normNombre(m.nombre)===nombreNorm;});
     }
