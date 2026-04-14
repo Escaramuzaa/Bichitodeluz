@@ -370,38 +370,29 @@ select option{background:var(--surface2)}
         </div>
       </div>
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px">
           <span class="card-title">Inventario</span>
-          <div style="display:flex;align-items:center;gap:8px;flex:1;max-width:500px;margin-left:12px">
-            <div style="position:relative;flex:1">
-              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px">🔍</span>
-              <input type="text" id="mp-search" placeholder="Buscar ingrediente…" oninput="renderMaterias()" style="padding-left:32px;background:var(--surface2)">
-            </div>
+          <div style="display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap">
+            <input type="text" id="mp-search" placeholder="Buscar ingrediente…" oninput="renderMaterias()" style="flex:1;min-width:160px;max-width:240px;background:var(--surface2)">
             <select id="mp-filter-cat" onchange="renderMaterias()" style="background:var(--surface2);font-size:12px;padding:9px 10px;min-width:130px">
               <option value="">Todas las categorías</option>
-              <option value="lácteos">🥛 Lácteos</option>
-              <option value="harinas y masas">🌾 Harinas y masas</option>
-              <option value="siropes y jarabes">🍯 Siropes</option>
-              <option value="frutas y verduras">🥦 Frutas y verduras</option>
-              <option value="carnes y pescados">🥩 Carnes y pescados</option>
-              <option value="aceites y vinagres">🫙 Aceites</option>
-              <option value="especias y salsas">🌶 Especias y salsas</option>
-              <option value="dulces y chocolates">🍫 Dulces</option>
-              <option value="bebidas y aguas">💧 Bebidas</option>
-              <option value="huevos">🥚 Huevos</option>
-              <option value="frutos secos">🥜 Frutos secos</option>
-              <option value="congelados">🧊 Congelados</option>
-              <option value="alcohol">🍷 Alcohol</option>
-              <option value="otros">📦 Otros</option>
+              <option value="lácteos">Lácteos</option>
+              <option value="harinas y masas">Harinas y masas</option>
+              <option value="siropes y jarabes">Siropes</option>
+              <option value="frutas y verduras">Frutas y verduras</option>
+              <option value="carnes y pescados">Carnes y pescados</option>
+              <option value="aceites y vinagres">Aceites</option>
+              <option value="especias y salsas">Especias y salsas</option>
+              <option value="dulces y chocolates">Dulces</option>
+              <option value="bebidas y aguas">Bebidas</option>
+              <option value="huevos">Huevos</option>
+              <option value="frutos secos">Frutos secos</option>
+              <option value="congelados">Congelados</option>
+              <option value="alcohol">Alcohol</option>
+              <option value="otros">Otros</option>
             </select>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="position:relative;display:flex;align-items:center">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:8px;color:var(--text3);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="mp-search" placeholder="Buscar ingrediente…" onclick="event.stopPropagation()" oninput="filterMaterias()" style="width:200px;background:var(--surface2);padding:6px 10px 6px 28px;font-size:12px;border-radius:var(--radius-xs)">
-            </div>
             <span id="mp-count" style="font-size:12px;color:var(--text3);white-space:nowrap"></span>
-            <button class="btn btn-sm btn-ghost" onclick="deduplicarMaterias()" title="Eliminar duplicados" style="gap:5px">
+            <button class="btn btn-sm btn-ghost" onclick="deduplicarMaterias()" style="gap:5px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
               Deduplicar
             </button>
@@ -488,10 +479,7 @@ select option{background:var(--surface2)}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem">
-        <div style="position:relative;display:flex;align-items:center">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:8px;color:var(--text3);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="art-search" placeholder="Buscar artículo…" onclick="event.stopPropagation()" oninput="filterArticulos()" style="max-width:300px;background:var(--surface2);padding:6px 10px 6px 28px;font-size:12px">
-        </div>
+        <input type="text" id="art-search" placeholder="Buscar artículo…" oninput="renderArticulos()" style="max-width:300px;background:var(--surface2)">
         <span id="art-count" style="font-size:12px;color:var(--text3)"></span>
       </div>
       <div id="art-table"><div class="empty"><div class="empty-icon">☕</div><div class="empty-title">Sin artículos</div><div class="empty-desc">Crea tu primer artículo con sus ingredientes</div></div></div>
@@ -941,13 +929,17 @@ function renderMaterias(){
   if(!DB.materias.length){wrap.innerHTML='<div class="empty"><div class="empty-icon">\u229e</div><div class="empty-title">Sin ingredientes</div><div class="empty-desc">A\u00f1ade uno o importa desde una factura</div></div>';count.textContent='';return;}
 
   var searchEl=document.getElementById('mp-search');
+  var filterEl=document.getElementById('mp-filter-cat');
   var q=searchEl?searchEl.value.toLowerCase().trim():'';
+  var filterCat=filterEl?filterEl.value:'';
 
   var materiasFiltradas=DB.materias.filter(function(m){
-    return !q||m.nombre.toLowerCase().includes(q)||(m.categoria||'').toLowerCase().includes(q);
+    var matchQ=!q||m.nombre.toLowerCase().includes(q)||(m.categoria||'').toLowerCase().includes(q);
+    var matchCat=!filterCat||(m.categoria||'otros')===filterCat;
+    return matchQ&&matchCat;
   });
 
-  count.textContent=(q?materiasFiltradas.length+' de ':'')+DB.materias.length+' ingrediente'+(DB.materias.length!==1?'s':'');
+  count.textContent=(q||filterCat?materiasFiltradas.length+' de ':'')+DB.materias.length+' ingrediente'+(DB.materias.length!==1?'s':'');
 
   if(!materiasFiltradas.length){
     wrap.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin resultados</div><div class="empty-desc">Prueba con otro t\u00e9rmino</div></div>';
