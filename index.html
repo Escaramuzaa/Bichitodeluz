@@ -397,6 +397,83 @@ function renderMaterias(){
   wrap.innerHTML='<table><thead><tr><th>Ingrediente</th><th>Precio compra</th><th>Cantidad</th><th>Coste unitario</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
+function dragOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('drag-over');}
+function dragLeave(){document.getElementById('drop-zone').classList.remove('drag-over');}
+function dropFile(e){e.preventDefault();dragLeave();var files=Array.from(e.dataTransfer.files).slice(0,5);if(files.length)processFiles(files);}
+function handleFiles(e){var files=Array.from(e.target.files).slice(0,5);if(files.length)processFiles(files);e.target.value='';}
+
+var INVOICE_PROMPT_LOCAL = INVOICE_PROMPT;
+
+async function processFiles(files){
+  var key=getApiKey();
+  if(!key){toast('Configura tu API key primero');showSection('config',document.querySelectorAll('.nav-btn')[4]);return;}
+  files=files.filter(function(f){return f.size<=10*1024*1024;});
+  if(files.length===0)return toast('Archivos demasiado grandes (max 10 MB)');
+  if(files.length>5){files=files.slice(0,5);toast('Solo se procesaran las primeras 5 facturas');}
+  var status=document.getElementById('invoice-status');
+  var statusText=document.getElementById('inv-status-text');
+  var progressWrap=document.getElementById('inv-files-progress');
+  var results=document.getElementById('invoice-results');
+  status.style.display='block';results.style.display='none';invoiceItems=[];
+  progressWrap.innerHTML=files.map(function(f,i){
+    return '<div id="fprog-'+i+'" style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px">'
+      +'<span class="spinner" id="fspin-'+i+'"></span>'
+      +'<span style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.name+'</span>'
+      +'<span id="fstatus-'+i+'" style="color:var(--text3);min-width:70px;text-align:right">Esperando…</span>'
+      +'</div>';
+  }).join('');
+  for(var i=0;i<files.length;i++){
+    var statEl=document.getElementById('fstatus-'+i);
+    var spinEl=document.getElementById('fspin-'+i);
+    statusText.textContent='Analizando '+(i+1)+' de '+files.length+'…';
+    statEl.textContent='Analizando…';statEl.style.color='var(--warn)';
+    try{
+      var result=await analyzeSingleFile(files[i],key);
+      if(result&&result.productos){
+        var fd=result.fecha||new Date().toISOString().slice(0,10);
+        result.productos.forEach(function(p,j){
+          invoiceItems.push(Object.assign({},p,{_id:'inv_'+i+'_'+j,_selected:true,_source:files[i].name,_fecha:fd}));
+        });
+        statEl.textContent=result.productos.length+' productos';statEl.style.color='var(--accent)';
+      }
+      spinEl.style.animation='none';spinEl.style.borderColor='var(--accent)';spinEl.style.borderTopColor='var(--accent)';
+    }catch(err){
+      statEl.textContent='Error';statEl.style.color='var(--danger)';
+      spinEl.style.animation='none';spinEl.style.borderColor='var(--danger)';spinEl.style.borderTopColor='var(--danger)';
+      console.error('Error procesando',files[i].name,err);
+    }
+    if(i<files.length-1)await new Promise(function(r){setTimeout(r,1200);});
+  }
+  statusText.textContent='✓ '+invoiceItems.length+' productos en '+files.length+' factura'+(files.length!==1?'s':'');
+  setTimeout(function(){status.style.display='none';renderInvoiceResults();results.style.display='block';},800);
+}
+
+async function analyzeSingleFile(file,key){
+  var base64=await fileToBase64(file);
+  var isPdf=file.type==='application/pdf';
+  var contentBlock=isPdf
+    ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}}
+    :{type:'image',source:{type:'base64',media_type:file.type,data:base64}};
+  var response=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:[contentBlock,{type:'text',text:INVOICE_PROMPT}]}]})
+  });
+  if(!response.ok){var err=await response.json().catch(function(){return{};});throw new Error(err.error&&err.error.message||'Error '+response.status);}
+  var data=await response.json();
+  var text=data.content.map(function(b){return b.text||'';}).join('');
+  return JSON.parse(text.replace(/```json|```/g,'').trim());
+}
+
+function fileToBase64(file){
+  return new Promise(function(res,rej){
+    var r=new FileReader();
+    r.onload=function(){res(r.result.split(',')[1]);};
+    r.onerror=function(){rej(new Error('Error al leer el archivo'));};
+    r.readAsDataURL(file);
+  });
+}
+
 function switchInvoiceTab(tab){
   document.getElementById('invoice-tab-pdf').style.display = tab==='pdf' ? 'block' : 'none';
   document.getElementById('invoice-tab-text').style.display = tab==='text' ? 'block' : 'none';
