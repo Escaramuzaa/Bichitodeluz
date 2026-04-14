@@ -285,7 +285,10 @@ select option{background:var(--surface2)}
   <div class="card">
     <div class="card-header">
       <span class="card-title">Inventario</span>
-      <span id="mp-count" style="font-size:12px;color:var(--text3)"></span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="mp-count" style="font-size:12px;color:var(--text3)"></span>
+        <button class="btn btn-sm btn-ghost" onclick="deduplicarMaterias()" title="Detecta duplicados por nombre similar y conserva el más reciente">🔁 Deduplicar</button>
+      </div>
     </div>
     <div id="mp-table"><div class="empty"><div class="empty-icon">⊞</div><div class="empty-title">Sin ingredientes</div><div class="empty-desc">Añade uno o importa desde una factura</div></div></div>
   </div>
@@ -567,7 +570,7 @@ function renderMaterias(){
   count.textContent=DB.materias.length+' ingrediente'+(DB.materias.length!==1?'s':'');
   var sorted=DB.materias.slice().sort(function(a,b){return a.nombre.localeCompare(b.nombre);});
   var rows=sorted.map(function(m){
-    var fd=m.facturaFecha?'<span style="font-size:10px;color:var(--text3);margin-left:6px">'+m.facturaFecha+'</span>':'';
+    var fd=m.facturaFecha?'<span style="font-size:11px;color:var(--text2);margin-left:8px;font-family:var(--mono)">'+m.facturaFecha+'</span>':'';
     return '<tr><td><strong style="font-weight:500">'+m.nombre+'</strong>'+fd+'</td><td class="mono" style="color:var(--text2)">'+fmtE(m.precio)+'</td><td class="mono" style="color:var(--text2)">'+fmt(m.cantidad)+' '+m.unidad+'</td><td class="mono" style="color:var(--accent);font-weight:500">'+fmtE4(m.costeUnit)+'/'+m.unidad+'</td><td><button class="btn btn-sm btn-danger" onclick="deleteMateria(\''+m.id+'\')">Eliminar</button></td></tr>';
   }).join('');
   wrap.innerHTML='<table class="data-table"><thead><tr><th>Ingrediente</th><th>Precio compra</th><th>Cantidad</th><th>Coste unitario</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
@@ -708,7 +711,7 @@ function renderInvoiceResults(){
   list.innerHTML=invoiceItems.map(function(item){
     var bc=item.confianza==='alta'?'badge-green':item.confianza==='media'?'badge-amber':'badge-neutral';
     var ct='';if(item._pct>0)ct='<span class="badge badge-amber" style="font-size:10px;margin-left:4px">\u2B06 +'+item._pct+'%</span>';else if(item._pct<0)ct='<span class="badge badge-green" style="font-size:10px;margin-left:4px">\u2B07 '+item._pct+'%</span>';
-    var src=item._source?'<span style="font-size:10px;color:var(--text3);margin-left:4px">\u2014 '+item._source+'</span>':'';
+    var src=item._source?'<span style="font-size:10px;color:var(--text2);margin-left:4px;opacity:.6">\u2014 '+item._source+'</span>':'';
     var pc=item.precio_caja||0;
     var cant=item.cantidad||1;
     var eid='ii_'+item._id.replace(/[^a-z0-9]/gi,'_');
@@ -735,7 +738,7 @@ function renderInvoiceResults(){
       +'<div class="inv-item-grid">'
       // Col 1: Nombre + badges
       +'<div><input type="text" value="'+item.nombre+'" onchange="updateInv(\''+eid+'\',\'nombre\',this.value)" style="width:100%;border:none;background:transparent;padding:0;font-weight:500;color:var(--text);font-family:var(--font)">'
-      +'<div style="margin-top:3px"><span class="badge '+bc+'" style="font-size:10px">'+item.confianza+'</span>'+ct+(item.detalle?'<span style="font-size:10px;color:var(--text3);margin-left:4px">'+item.detalle+'</span>':'')+src+'</div></div>'
+      +'<div style="margin-top:3px"><span class="badge '+bc+'" style="font-size:10px">'+item.confianza+'</span>'+ct+(item.detalle?'<span style="font-size:11px;color:var(--text);margin-left:6px;opacity:.7">'+item.detalle+'</span>':'')+src+'</div></div>'
       // Col 2: Contenido por unidad (ej: 700 mL) — dos inputs juntos
       +'<div style="display:flex;gap:3px;align-items:center">'
       +'<input type="number" value="'+(medVal||'')+'" min="0" step="any" placeholder="—" title="Contenido por unidad" onchange="updateInv(\''+eid+'\',\'medida_unitaria\',parseFloat(this.value)||null);recalcCU(\''+eid+'\')" style="width:52px;text-align:right;background:var(--surface2);padding:5px 6px">'
@@ -833,6 +836,55 @@ function renderDashboard(){
 function exportData(){var blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='escaramuza_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('Exportado \u2713');}
 function importData(e){var file=e.target.files[0];if(!file)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(!d.materias||!d.articulos)throw new Error('Formato inv\u00e1lido');DB=d;saveLocal();scheduleSync();renderMaterias();renderArticulos();renderDashboard();toast('Importado \u2713');}catch(err){toast('Error: '+err.message);}};r.readAsText(file);e.target.value='';}
 function clearData(){if(!confirm('\u00bfBorrar TODOS los datos?'))return;DB={materias:[],articulos:[]};saveLocal();renderMaterias();renderArticulos();renderDashboard();toast('Datos eliminados');}
+
+// ── DEDUPLICAR ──
+function normNombre(n){
+  return n.toLowerCase()
+    .replace(/\b(aro|mc|bt|pet|igp|dop|eco|bio|s\.a\.|sa|sl|co\.)\b/g,'')
+    .replace(/\b(rioba|borges|marde|monter|asturiana|font vella|gallo|knorr|hellmanns?)\b/g,'')
+    .replace(/\d+(\.\d+)?\s*(g|kg|ml|cl|l|ud|uds?|pcs?|unidades?|litros?|gramos?)\b/gi,'')
+    .replace(/[^a-záéíóúüñ\s]/gi,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function deduplicarMaterias(){
+  if(!DB.materias.length)return toast('No hay ingredientes');
+  // Agrupar por nombre normalizado
+  var grupos={};
+  DB.materias.forEach(function(m){
+    var key=normNombre(m.nombre);
+    if(!grupos[key])grupos[key]=[];
+    grupos[key].push(m);
+  });
+  var eliminados=0;var nuevaLista=[];
+  Object.keys(grupos).forEach(function(key){
+    var grupo=grupos[key];
+    if(grupo.length===1){nuevaLista.push(grupo[0]);return;}
+    // Ordenar por facturaFecha desc, luego updatedAt desc → conservar el primero
+    grupo.sort(function(a,b){
+      var fa=a.facturaFecha||'2000-01-01';var fb=b.facturaFecha||'2000-01-01';
+      if(fa!==fb)return fb.localeCompare(fa);
+      return (b.updatedAt||'').localeCompare(a.updatedAt||'');
+    });
+    // Elegir el ganador: el de fecha más reciente
+    var ganador=grupo[0];
+    // Si alguno está en uso en artículos, asegurarse que el ganador conserve ese id
+    var enUso=grupo.find(function(m){return DB.articulos.some(function(a){return(a.ingredientes||[]).some(function(i){return i.materiaId===m.id;});});});
+    if(enUso&&enUso.id!==ganador.id){
+      // Actualizar artículos que apuntaban al ganador para apuntar al enUso
+      DB.articulos.forEach(function(a){(a.ingredientes||[]).forEach(function(ing){if(ing.materiaId===ganador.id)ing.materiaId=enUso.id;});});
+      // Copiar datos del ganador (más reciente) al enUso
+      enUso.precio=ganador.precio;enUso.cantidad=ganador.cantidad;enUso.unidad=ganador.unidad;enUso.costeUnit=ganador.costeUnit;enUso.facturaFecha=ganador.facturaFecha;enUso.updatedAt=ganador.updatedAt;
+      // El ganador real ahora es enUso (con id original)
+      ganador=enUso;
+    }
+    nuevaLista.push(ganador);
+    eliminados+=grupo.length-1;
+  });
+  if(!eliminados)return toast('No se encontraron duplicados ✓');
+  DB.materias=nuevaLista;
+  saveLocal();scheduleSync();renderMaterias();renderArticulos();renderDashboard();
+  toast('✓ '+eliminados+' duplicado'+(eliminados!==1?'s':'')+' eliminado'+(eliminados!==1?'s':''));
+}
 
 // ── INIT ──
 loadLocal();loadScriptUrlStatus();renderDashboard();
