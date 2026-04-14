@@ -485,18 +485,45 @@ async function analyzeSingleFile(file,key){
   var base64=await new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=function(){rej(new Error('Error leyendo archivo'));};r.readAsDataURL(file);});
   var mimeType=file.type==='application/pdf'?'application/pdf':file.type;
   var part={inlineData:{mimeType:mimeType,data:base64}};
-  var resp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[part,{text:INVOICE_PROMPT}]}],generationConfig:{temperature:0.1,maxOutputTokens:4000}})});
-  if(!resp.ok){var e=await resp.json().catch(function(){return{};});throw new Error(e.error&&e.error.message||'Error '+resp.status);}
+  // For PDFs use file upload approach via inline data
+  var bodyObj;
+  if(file.type==='application/pdf'){
+    bodyObj={contents:[{parts:[{text:INVOICE_PROMPT},{inlineData:{mimeType:'application/pdf',data:base64}}]}],generationConfig:{temperature:0.1,maxOutputTokens:8000}};
+  } else {
+    bodyObj={contents:[{parts:[{text:INVOICE_PROMPT},part]}],generationConfig:{temperature:0.1,maxOutputTokens:8000}};
+  }
+  var resp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bodyObj)});
+  if(!resp.ok){var e=await resp.json().catch(function(){return{};});var em=e.error&&e.error.message||'Error '+resp.status;console.error('Gemini error:',em,JSON.stringify(e));throw new Error(em);}
   var d=await resp.json();
-  console.log('Gemini response:', JSON.stringify(d).slice(0,500));
+  console.log('Gemini full response:', JSON.stringify(d).slice(0,1000));
   var txt=d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts?d.candidates[0].content.parts.map(function(p){return p.text||'';}).join(''):'';
-  console.log('Gemini text:', txt.slice(0,300));
+  console.log('Gemini text extracted:', txt.slice(0,500));
   var clean=txt.replace(/```json|```|```JSON/g,'').trim();
   var start=clean.indexOf('{');var end=clean.lastIndexOf('}');
-  if(start===-1||end===-1){console.error('Gemini raw response:',txt);throw new Error('Gemini no devolvio JSON valido');}
+  if(start===-1){console.error('Gemini raw:',txt);throw new Error('Gemini no devolvio JSON valido');}
+  // If JSON is truncated, try to find last complete product entry
   var jsonStr=clean.slice(start,end+1);
-  try{return JSON.parse(jsonStr);}
-  catch(e){console.error('JSON parse error:',jsonStr);throw new Error('Error parseando respuesta: '+e.message);}
+  try{
+    return JSON.parse(jsonStr);
+  } catch(e){
+    console.warn('JSON truncado, intentando recuperar productos...',e.message);
+    // Try to extract productos array even if JSON is truncated
+    var prodStart=jsonStr.indexOf('"productos":[');
+    if(prodStart===-1) throw new Error('No se encontraron productos en la respuesta');
+    var prodArr=jsonStr.slice(prodStart+13);
+    // Find last complete object by looking for last }
+    var lastComplete=prodArr.lastIndexOf('},');
+    if(lastComplete===-1) lastComplete=prodArr.lastIndexOf('}');
+    if(lastComplete===-1) throw new Error('No se pudieron recuperar productos');
+    var recovered='{"productos":['+prodArr.slice(0,lastComplete+1)+'],"nota":"Respuesta parcial recuperada"}';
+    try{
+      var result=JSON.parse(recovered);
+      console.log('Recuperados',result.productos.length,'productos de respuesta truncada');
+      return result;
+    } catch(e2){
+      throw new Error('Error al recuperar JSON: '+e2.message);
+    }
+  }
 }
 
 async function processQuickText(){
