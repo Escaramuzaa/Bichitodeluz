@@ -308,6 +308,7 @@ td{padding:10px 12px;vertical-align:middle}
 
 <script>
 var DB={materias:[],articulos:[]};
+var _lastInvoiceDate=null;
 var editingId=null;
 var invoiceItems=[];
 var syncTimer=null;
@@ -392,7 +393,7 @@ function renderMaterias(){
   var wrap=document.getElementById('mp-table-wrap');var count=document.getElementById('mp-count');
   if(DB.materias.length===0){wrap.innerHTML='<div class="empty-state"><div class="empty-icon">📦</div><div>Sin materias primas a\u00fan.</div></div>';count.textContent='';return;}
   count.textContent=DB.materias.length+' ingrediente'+(DB.materias.length!==1?'s':'');
-  var rows=DB.materias.map(function(m){var upd=m.updatedAt?'<span style="font-size:10px;color:var(--text3);margin-left:6px">act. '+new Date(m.updatedAt).toLocaleDateString('es')+'</span>':'';return '<tr><td><strong>'+m.nombre+'</strong>'+upd+'</td><td class="mono">'+fmtEur(m.precio)+'</td><td class="mono">'+fmt(m.cantidad)+' '+m.unidad+'</td><td class="mono" style="color:var(--accent);font-weight:500">'+fmtEur(m.costeUnit)+'/'+m.unidad+'</td><td><button class="btn btn-sm btn-danger" onclick="deleteMateria(\''+m.id+'\')">Eliminar</button></td></tr>';}).join('');
+  var rows=DB.materias.map(function(m){var fechaLabel=m.facturaFecha?m.facturaFecha:(m.updatedAt?new Date(m.updatedAt).toLocaleDateString('es'):'');var upd=fechaLabel?'<span style="font-size:10px;color:var(--text3);margin-left:6px">factura: '+fechaLabel+'</span>':'';return '<tr><td><strong>'+m.nombre+'</strong>'+upd+'</td><td class="mono">'+fmtEur(m.precio)+'</td><td class="mono">'+fmt(m.cantidad)+' '+m.unidad+'</td><td class="mono" style="color:var(--accent);font-weight:500">'+fmtEur(m.costeUnit)+'/'+m.unidad+'</td><td><button class="btn btn-sm btn-danger" onclick="deleteMateria(\''+m.id+'\')">Eliminar</button></td></tr>';}).join('');
   wrap.innerHTML='<table><thead><tr><th>Ingrediente</th><th>Precio compra</th><th>Cantidad</th><th>Coste unitario</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
@@ -408,22 +409,22 @@ function switchInvoiceTab(tab){
 async function processQuickText(){
   var key=getApiKey();
   if(!key){toast('Configura tu API key primero');showSection('config',document.querySelectorAll('.nav-btn')[4]);return;}
-  var text=document.getElementById('quick-text-input').value.trim();
-  if(!text)return toast('Escribe algo primero');
+  var inputText=document.getElementById('quick-text-input').value.trim();
+  if(!inputText)return toast('Escribe algo primero');
   var spinner=document.getElementById('quick-text-spinner');
   spinner.style.display='flex';
   document.getElementById('invoice-results').style.display='none';
   invoiceItems=[];
-
-  var prompt='Eres un asistente de hosteleria. El usuario te describe compras en lenguaje natural. Extrae cada producto y calcula el PRECIO POR UNIDAD MINIMA util para una cafeteria.\n\nREGLAS CRITICAS:\n1. Si compra "bolsa de 20 croissants por 6 euros" -> nombre="Croissant", cantidad=20, unidad=ud, precio_total=6, coste_unitario=0.30\n2. Si compra "6 botellas de leche 1L por 7.20" -> nombre="Leche", cantidad=6, unidad=L, precio_total=7.20, coste_unitario=1.20\n3. Si compra "saco 5kg azucar 4.50" -> nombre="Azucar", cantidad=5, unidad=kg, precio_total=4.50\n4. SIEMPRE incluye el campo detalle explicando el formato original (ej: "bolsa 20 ud", "6 botellas 1L")\n5. Los precios se asumen SIN IVA salvo que se indique lo contrario\n\nTexto del usuario:\n'+text+'\n\nResponde SOLO con JSON valido:\n{"productos":[{"nombre":"...","cantidad":number,"unidad":"kg/g/L/mL/ud/docena","precio_total":number,"confianza":"alta","detalle":"..."}],"nota":"..."}';
-
+  var today=new Date().toISOString().slice(0,10);
+  var prompt='Eres un asistente de hosteleria. El usuario describe compras en lenguaje natural. Extrae productos y calcula precio por unidad minima.\n\nREGLAS CRITICAS:\n1. precio_total = precio de UNA sola unidad de compra (1 bolsa, 1 caja). NO el total de varias.\n   Ej: bolsa de 20 croissants a 6 euros -> precio_total=6, cantidad=20, unidad=ud, coste_unit=0.30\n   Ej: 2 bolsas de 20 croissants 12 euros -> precio_total=6 (12/2), cantidad=20, unidad=ud\n2. detalle: describe el formato original (ej: 1 bolsa x 20 ud)\n3. fecha: usa '+today+' si no se indica otra.\n\nTexto del usuario:\n'+inputText+'\n\nResponde SOLO con JSON valido:\n{"fecha":"'+today+'","productos":[{"nombre":"...","cantidad":number,"unidad":"kg/g/L/mL/ud/docena","precio_total":number,"confianza":"alta","detalle":"..."}],"nota":"..."}';
   try{
     var response=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:prompt}]})});
     if(!response.ok){var err=await response.json().catch(function(){return{};});throw new Error(err.error&&err.error.message||'Error '+response.status);}
     var data=await response.json();
-    var text2=data.content.map(function(b){return b.text||'';}).join('');
-    var parsed=JSON.parse(text2.replace(/```json|```/g,'').trim());
-    invoiceItems=parsed.productos.map(function(p,i){return Object.assign({},p,{_id:'qt_'+i,_selected:true,_source:'Entrada manual'});});
+    var txt=data.content.map(function(b){return b.text||'';}).join('');
+    var parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
+    _lastInvoiceDate=parsed.fecha||today;
+    invoiceItems=parsed.productos.map(function(p,i){return Object.assign({},p,{_id:'qt_'+i,_selected:true,_source:'Entrada manual',_fecha:_lastInvoiceDate});});
     spinner.style.display='none';
     renderInvoiceResults();
     document.getElementById('invoice-results').style.display='block';
@@ -434,34 +435,6 @@ async function processQuickText(){
   }
 }
 
-function dragOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('drag-over');}
-function dragLeave(){document.getElementById('drop-zone').classList.remove('drag-over');}
-function dropFile(e){e.preventDefault();dragLeave();var files=Array.from(e.dataTransfer.files).slice(0,5);if(files.length)processFiles(files);}
-function handleFiles(e){var files=Array.from(e.target.files).slice(0,5);if(files.length)processFiles(files);e.target.value='';}
-
-var INVOICE_PROMPT = 'Eres un asistente especializado en leer facturas de proveedores de hosteleria en Espana. Tu objetivo es calcular el COSTE UNITARIO MAS UTIL para una cafeteria.\n\nREGLAS CRITICAS:\n1. PAQUETES con multiples unidades (ej: "CROISSANT MANTEQUILL MC 20X60G" = caja de 20 croissants de 60g): nombre=Croissant, cantidad=TOTAL unidades individuales (ej: 2 cajas x 20 = 40 ud), unidad=ud, precio_total=precio total pagado. SIEMPRE desglosa en unidades individuales.\n2. LIQUIDOS en botellas/briks: Si "6 botellas 1.5L" entonces cantidad=9 (6x1.5), unidad=L. Si "1 botella 200mL" entonces cantidad=200, unidad=mL.\n3. SOLIDOS a granel: suma total en kg/g. "2 sacos 5kg" = cantidad=10, unidad=kg.\n4. PRECIO: SIEMPRE sin IVA. La factura Makro tiene columna IMP (1=10%, 2=21%, 5=4%). Divide precio entre 1.10, 1.21 o 1.04 segun corresponda.\n5. detalle: SIEMPRE incluye el formato original (ej: "2 cajas x 20 ud x 60g", "6 bot x 1.5L").\n6. Ignora productos de limpieza, material de oficina, envases, guantes - solo incluye ingredientes de cocina/cafeteria.\n\nPara cada producto:\n- nombre: string (ingrediente singular limpio en espanol)\n- cantidad: number (total en la unidad indicada)\n- unidad: exactamente una de: kg, g, L, mL, ud, docena\n- precio_total: number (euros SIN IVA)\n- confianza: alta, media o baja\n- detalle: string OBLIGATORIO explicando formato\n\nResponde SOLO con JSON valido sin texto extra:\n{"productos":[...],"nota":"observaciones"}';
-
-async function processFiles(files){
-  var key=getApiKey();if(!key){toast('Configura tu API key primero');showSection('config',document.querySelectorAll('.nav-btn')[4]);return;}
-  files=files.filter(function(f){return f.size<=10*1024*1024;});
-  if(files.length===0)return toast('Archivos demasiado grandes (m\u00e1x 10 MB)');
-  if(files.length>5){files=files.slice(0,5);toast('Solo se procesar\u00e1n las primeras 5 facturas');}
-  var status=document.getElementById('invoice-status');var statusText=document.getElementById('inv-status-text');var progressWrap=document.getElementById('inv-files-progress');var results=document.getElementById('invoice-results');
-  status.style.display='block';results.style.display='none';invoiceItems=[];
-  progressWrap.innerHTML=files.map(function(f,i){return '<div id="fprog-'+i+'" style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px"><span class="spinner" id="fspin-'+i+'"></span><span style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.name+'</span><span id="fstatus-'+i+'" style="color:var(--text3);min-width:70px;text-align:right">Esperando\u2026</span></div>';}).join('');
-  for(var i=0;i<files.length;i++){
-    var statEl=document.getElementById('fstatus-'+i);var spinEl=document.getElementById('fspin-'+i);
-    statusText.textContent='Analizando '+(i+1)+' de '+files.length+'\u2026';statEl.textContent='Analizando\u2026';statEl.style.color='var(--warn)';
-    try{
-      var result=await analyzeSingleFile(files[i],key);
-      if(result&&result.productos){result.productos.forEach(function(p,j){invoiceItems.push(Object.assign({},p,{_id:'inv_'+i+'_'+j,_selected:true,_source:files[i].name}));});statEl.textContent=result.productos.length+' productos';statEl.style.color='var(--accent)';}
-      spinEl.style.animation='none';spinEl.style.borderColor='var(--accent)';spinEl.style.borderTopColor='var(--accent)';
-    }catch(err){statEl.textContent='Error';statEl.style.color='var(--danger)';spinEl.style.animation='none';spinEl.style.borderColor='var(--danger)';spinEl.style.borderTopColor='var(--danger)';}
-    if(i<files.length-1)await new Promise(function(r){setTimeout(r,1200);});
-  }
-  statusText.textContent='\u2713 '+invoiceItems.length+' productos en '+files.length+' factura'+(files.length!==1?'s':'');
-  setTimeout(function(){status.style.display='none';renderInvoiceResults();results.style.display='block';},800);
-}
 
 async function analyzeSingleFile(file,key){
   var base64=await fileToBase64(file);var isPdf=file.type==='application/pdf';
@@ -505,7 +478,12 @@ function selectAllInvoice(){invoiceItems.forEach(function(i){i._selected=true;va
 function importSelected(){
   var selected=invoiceItems.filter(function(i){return i._selected;});if(selected.length===0)return toast('Selecciona al menos un producto');
   var added=0,updated=0;var now=new Date().toISOString();
-  selected.forEach(function(item){if(!item.nombre||!item.precio_total||!item.cantidad)return;var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===item.nombre.toLowerCase();});if(ex){ex.precio=item.precio_total;ex.cantidad=item.cantidad;ex.unidad=item.unidad;ex.costeUnit=item.precio_total/item.cantidad;ex.updatedAt=now;updated++;}else{DB.materias.push({id:genId(),nombre:item.nombre,precio:item.precio_total,cantidad:item.cantidad,unidad:item.unidad,costeUnit:item.precio_total/item.cantidad,createdAt:now,updatedAt:now});added++;}});
+  selected.forEach(function(item){if(!item.nombre||!item.precio_total||!item.cantidad)return;var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===item.nombre.toLowerCase();});if(ex){
+    var itemFecha=item._fecha||now;
+    var exFecha=ex.facturaFecha||ex.updatedAt||'2000-01-01';
+    if(itemFecha>=exFecha){ex.precio=item.precio_total;ex.cantidad=item.cantidad;ex.unidad=item.unidad;ex.costeUnit=item.precio_total/item.cantidad;ex.updatedAt=now;ex.facturaFecha=itemFecha;updated++;}
+    else{toast('⚠ "'+item.nombre+'" no actualizado: la factura ('+itemFecha+') es más antigua que la guardada ('+exFecha+')',4000);}
+  }else{DB.materias.push({id:genId(),nombre:item.nombre,precio:item.precio_total,cantidad:item.cantidad,unidad:item.unidad,costeUnit:item.precio_total/item.cantidad,createdAt:now,updatedAt:now,facturaFecha:item._fecha||now});added++;}});
   saveLocal();scheduleSync();document.getElementById('invoice-results').style.display='none';invoiceItems=[];
   toast('\u2713 '+added+' a\u00f1adido'+(added!==1?'s':'')+', '+updated+' actualizado'+(updated!==1?'s':''));
   showSection('materias',document.querySelectorAll('.nav-btn')[0]);
