@@ -756,28 +756,34 @@ function changeCatMateria(id,val){
 
 function renderMaterias(){
   var wrap=document.getElementById('mp-table');var count=document.getElementById('mp-count');
-  if(!DB.materias.length){wrap.innerHTML='<div class="empty"><div class="empty-icon">⊞</div><div class="empty-title">Sin ingredientes</div><div class="empty-desc">Añade uno o importa desde una factura</div></div>';count.textContent='';return;}
+  if(!DB.materias.length){wrap.innerHTML='<div class="empty"><div class="empty-icon">\u229e</div><div class="empty-title">Sin ingredientes</div><div class="empty-desc">A\u00f1ade uno o importa desde una factura</div></div>';count.textContent='';return;}
   count.textContent=DB.materias.length+' ingrediente'+(DB.materias.length!==1?'s':'');
   var groups={};
   DB.materias.forEach(function(m){var cat=m.categoria||'otros';if(!groups[cat])groups[cat]=[];groups[cat].push(m);});
   var catKeys=Object.keys(groups).sort(function(a,b){var ia=CAT_LIST.indexOf(a);var ib=CAT_LIST.indexOf(b);if(ia===-1&&ib===-1)return a.localeCompare(b);if(ia===-1)return 1;if(ib===-1)return -1;return ia-ib;});
-  var catOpts=CAT_LIST.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
   var html='';
   catKeys.forEach(function(cat){
     var items=groups[cat].slice().sort(function(a,b){return a.nombre.localeCompare(b.nombre);});
-    var icon=CAT_ICONS[cat]||'📦';
+    var icon=CAT_ICONS[cat]||'\uD83D\uDCE6';
     var collapsed=collapsedCats[cat];
     var hid=('cat_'+cat).replace(/\W/g,'_');
-    html+='<div class="cat-group"><div class="cat-header" onclick="toggleCat(\''+cat+'\')"><span style="font-size:15px">'+icon+'</span><span style="font-size:12px;font-weight:600;color:var(--text);flex:1;text-transform:capitalize">'+cat+'</span><span style="font-size:11px;color:var(--text3)">'+items.length+'</span><span style="font-size:11px;color:var(--text3);margin-left:6px;transition:transform .2s;display:inline-block;'+(collapsed?'':'transform:rotate(90deg)')+'">▶</span></div>';
-    html+='<div id="'+hid+'" style="'+(collapsed?'display:none':'')+'"><table class="data-table"><tbody>';
+    html+='<div style="margin-bottom:1.5rem">';
+    html+='<div class="cat-header" onclick="toggleCat(\''+cat+'\')"><span style="font-size:18px">'+icon+'</span><span style="font-size:13px;font-weight:600;color:var(--text);flex:1;text-transform:capitalize">'+cat+'</span><span class="badge badge-neutral" style="margin-right:6px">'+items.length+'</span><span style="font-size:11px;color:var(--text3);transition:transform .2s;display:inline-block;'+(collapsed?'':'transform:rotate(90deg)')+'">&#9658;</span></div>';
+    html+='<div id="'+hid+'" style="display:'+(collapsed?'none':'grid')+';grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:10px;padding:2px">';
     items.forEach(function(m){
       var cu=m.costeUnit||m.coste_unit||0;
       var fd=m.facturaFecha||m.factura_fecha;
-      var fdSpan=fd?'<span style="font-size:10px;color:var(--text2);margin-left:8px;font-family:var(--mono)">'+fd+'</span>':'';
-      var catSel='<select onchange="changeCatMateria(\''+m.id+'\',this.value)" style="background:var(--surface2);font-size:10px;padding:2px 4px;border-radius:4px;color:var(--text2)">'+CAT_LIST.map(function(c){return '<option value="'+c+'"'+(c===cat?' selected':'')+'>'+c+'</option>';}).join('')+'</select>';
-      html+='<tr><td><strong style="font-weight:500">'+m.nombre+'</strong>'+fdSpan+'<div style="margin-top:3px">'+catSel+'</div></td><td class="mono" style="color:var(--text2)">'+fmtE(m.precio)+'</td><td class="mono" style="color:var(--text2)">'+fmt(m.cantidad)+' '+m.unidad+'</td><td class="mono" style="color:var(--accent);font-weight:500">'+fmtE4(cu)+'/'+m.unidad+'</td><td><button class="btn btn-sm btn-danger" onclick="deleteMateria(\''+m.id+'\')">Eliminar</button></td></tr>';
+      var nombre=titleCase(m.nombre);
+      var catOpts=CAT_LIST.map(function(c){return '<option value="'+c+'"'+(c===cat?' selected':'')+'>'+c+'</option>';}).join('');
+      html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;gap:6px;transition:all .15s" onmouseenter="this.style.borderColor=\'var(--accent-dim)\';this.style.background=\'var(--surface3)\'" onmouseleave="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--surface2)\'">'
+        +'<div style="font-weight:600;font-size:13px;color:var(--text);line-height:1.3;min-height:36px">'+nombre+'</div>'
+        +'<div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent);line-height:1">'+fmtE4(cu)+'/'+m.unidad+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);line-height:1.5">'+fmtE(m.precio)+' · '+fmt(m.cantidad)+' '+m.unidad+(fd?'<br><span style="color:var(--text2)">'+fd+'</span>':'')+'</div>'
+        +'<select onchange="changeCatMateria(\''+m.id+'\',this.value)" style="width:100%;background:var(--surface);font-size:11px;padding:4px 6px;border-radius:4px;color:var(--text2);border:1px solid var(--border);margin-top:auto">'+catOpts+'</select>'
+        +'<button class="btn btn-sm btn-danger" style="width:100%;justify-content:center;margin-top:2px" onclick="deleteMateria(\''+m.id+'\')">Eliminar</button>'
+        +'</div>';
     });
-    html+='</tbody></table></div></div>';
+    html+='</div></div>';
   });
   wrap.innerHTML=html;
 }
@@ -787,7 +793,22 @@ function toggleCat(cat){collapsedCats[cat]=!collapsedCats[cat];renderMaterias();
 // ═══════════════════════════════════════
 // DEDUPLICAR
 // ═══════════════════════════════════════
-function normNombre(n){return n.toLowerCase().replace(/\b(aro|mc|bt|pet|igp|dop|eco|bio|rioba|borges|marde|asturiana|font vella|gallo|knorr)\b/g,'').replace(/\d+(\.\d+)?\s*(g|kg|ml|cl|l|ud|uds?)\b/gi,'').replace(/[^a-záéíóúüñ\s]/gi,' ').replace(/\s+/g,' ').trim();}
+function titleCase(str){
+  return str.toLowerCase().replace(/(?:^|\s|\/|-)\S/g,function(a){return a.toUpperCase();});
+}
+
+function normNombre(n){
+  return n.toLowerCase()
+    .replace(/\b(aro|mc|bt|pet|igp|dop|eco|bio|rioba|borges|marde|monter|asturiana|font vella|gallo|knorr|hellmanns?|belbake|arla|president|président|anchor|lurpak|la molisana|barilla|garofalo|hacendado|mercadona|eroski)\b/g,'')
+    .replace(/\d+(\.\d+)?\s*(g|kg|ml|cl|dl|l|ud|uds|pcs|unidades|litros|gramos|latas?|botellas?|bricks?|sobres?|bolsas?|cajas?|packs?|tarros?)\b/gi,'')
+    .replace(/\d+x\d+/gi,'').replace(/\d+%/g,'')
+    .replace(/\b(extra|especial|premium|profesional|hosteleria|hostelería|horeca|natural|fresco|fresca|ecologico|ecológico|organico|orgánico|clasico|clásico)\b/g,'')
+    .replace(/\bcrema\s+de\s+queso\b/g,'queso crema')
+    .replace(/\bnata\s+(?:para\s+)?montar\b/g,'nata montar')
+    .replace(/\bpan\s+(?:de\s+)?molde\b/g,'pan molde')
+    .replace(/\bsirope[s]?\b/g,'sirope').replace(/\bsyrup[s]?\b/g,'sirope')
+    .replace(/[^a-záéíóúüñ\s]/gi,' ').replace(/\s+/g,' ').trim();
+}
 
 function deduplicarSilencioso(materias){
   var grupos={};
@@ -805,16 +826,20 @@ function deduplicarSilencioso(materias){
   return lista;
 }
 
-function deduplicarMaterias(){
+async function deduplicarMaterias(){
   if(!DB.materias.length)return toast('No hay ingredientes');
   var antes=DB.materias.length;
+  var idsAntes=DB.materias.map(function(m){return m.id;});
   DB.materias=deduplicarSilencioso(DB.materias);
+  var idsDepues=DB.materias.map(function(m){return m.id;});
+  var paraEliminar=idsAntes.filter(function(id){return idsDepues.indexOf(id)===-1;});
+  if(paraEliminar.length){
+    await Promise.all(paraEliminar.map(function(id){return sb.from('materias').delete().eq('id',id);}));
+  }
   var eliminados=antes-DB.materias.length;
-  if(!eliminados)return toast('No se encontraron duplicados ✓');
-  // Guardar todos los que quedan
-  Promise.all(DB.materias.map(function(m){return saveMateria(m);}));
-  renderMaterias(); renderArticulos(); renderDashboard();
-  toast('✓ '+eliminados+' duplicado'+(eliminados!==1?'s':'')+' eliminado'+(eliminados!==1?'s':''));
+  if(!eliminados)return toast('No se encontraron duplicados \u2713');
+  renderMaterias();renderArticulos();renderDashboard();
+  toast('\u2713 '+eliminados+' duplicado'+(eliminados!==1?'s':'')+' eliminado'+(eliminados!==1?'s':''));
 }
 
 // ═══════════════════════════════════════
@@ -1022,12 +1047,18 @@ async function importSelected(){
     var cant=s.cantidad;
     var medVal=s.medida_unitaria;
     var medUnit=s.unidad_medida||s.unidad||'ud';
+    // Normalizar unidades: si es liquido guardar en mL, si es solido en g
+    if(medUnit==='L'||medUnit==='l'){medUnit='mL';medVal=medVal?parseFloat(medVal)*1000:medVal;}
+    if(medUnit==='cl'){medUnit='mL';medVal=medVal?parseFloat(medVal)*10:medVal;}
+    if(medUnit==='kg'){medUnit='g';medVal=medVal?parseFloat(medVal)*1000:medVal;}
     // Coste unitario real: precio / (cantidad * medida)
     var cuReal=medVal&&parseFloat(medVal)>0 ? pc/(cant*parseFloat(medVal)) : cant>0 ? pc/cant : pc;
+    // Nombre con primera letra mayúscula
+    var nombreLimpio=titleCase(s.nombre);
 
     // Buscar coincidencia — exacta primero, luego fuzzy por nombre normalizado
-    var nombreNorm=normNombre(s.nombre);
-    var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===s.nombre.toLowerCase();});
+    var nombreNorm=normNombre(nombreLimpio);
+    var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===nombreLimpio.toLowerCase();});
     if(!ex){
       ex=DB.materias.find(function(m){return normNombre(m.nombre)===nombreNorm;});
     }
@@ -1040,7 +1071,7 @@ async function importSelected(){
     if(ex){
       var ef=ex.facturaFecha||ex.factura_fecha||'2000-01-01';
       if(fd>=ef){
-        // Actualizar con datos más recientes
+        ex.nombre=nombreLimpio;
         ex.precio=pc; ex.cantidad=cant; ex.unidad=medUnit;
         ex.categoria=s.categoria||ex.categoria||'otros';
         ex.costeUnit=cuReal; ex.coste_unit=cuReal;
@@ -1060,7 +1091,7 @@ async function importSelected(){
     }else{
       // Nuevo producto
       var m={
-        id:genId(), nombre:s.nombre, categoria:s.categoria||'otros',
+        id:genId(), nombre:nombreLimpio, categoria:s.categoria||'otros',
         precio:pc, cantidad:cant, unidad:medUnit,
         costeUnit:cuReal, coste_unit:cuReal,
         facturaFecha:fd, factura_fecha:fd,
