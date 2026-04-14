@@ -272,8 +272,9 @@ select option{background:var(--surface2)}
   <div class="card" style="margin-bottom:1rem">
     <div class="card-header"><span class="card-title">Añadir manualmente</span></div>
     <div class="card-body">
-      <div class="form-row cols-4" style="margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px">
         <div class="field" style="margin:0"><label>Ingrediente</label><input type="text" id="mp-nombre" placeholder="Ej: leche entera, café molido…"></div>
+        <div class="field" style="margin:0"><label>Categoría</label><select id="mp-categoria"><option value="otros">Otros</option><option value="lácteos">Lácteos</option><option value="harinas y masas">Harinas y masas</option><option value="siropes y jarabes">Siropes y jarabes</option><option value="frutas y verduras">Frutas y verduras</option><option value="carnes y pescados">Carnes y pescados</option><option value="aceites y vinagres">Aceites y vinagres</option><option value="especias y salsas">Especias y salsas</option><option value="dulces y chocolates">Dulces y chocolates</option><option value="bebidas y aguas">Bebidas y aguas</option><option value="huevos">Huevos</option><option value="frutos secos">Frutos secos</option><option value="congelados">Congelados</option></select></div>
         <div class="field" style="margin:0"><label>Precio con IVA (€)</label><input type="number" id="mp-precio" placeholder="0.00" min="0" step="0.01" oninput="previewCoste()"></div>
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" id="mp-cantidad" placeholder="1" min="0.001" step="any" oninput="previewCoste()"></div>
         <div class="field" style="margin:0"><label>Unidad</label><select id="mp-unidad" onchange="previewCoste()"><option value="kg">kg</option><option value="g">g</option><option value="L">litro</option><option value="mL">mL</option><option value="ud">unidad</option><option value="docena">docena</option></select></div>
@@ -398,10 +399,18 @@ select option{background:var(--surface2)}
         <div style="margin-top:10px;font-size:13px;color:var(--text2);line-height:2">
           <ol style="padding-left:1.25rem">
             <li>Ve a <a href="https://script.google.com" target="_blank" style="color:var(--accent)">script.google.com</a> → Nuevo proyecto</li>
-            <li>Pega el contenido de <strong>apps_script.js</strong> → Ctrl+S</li>
-            <li>Implementar → Nueva implementación → App web → Cualquier usuario</li>
-            <li>Copia la URL y pégala abajo</li>
+            <li>Borra todo el código que hay y pega el código de abajo → Ctrl+S</li>
+            <li>Implementar → Nueva implementación → App web → Ejecutar como: <strong>Yo</strong> → Quién tiene acceso: <strong>Cualquier usuario</strong></li>
+            <li>Autoriza los permisos → Copia la URL y pégala abajo</li>
+            <li>⚠️ Si ya tenías una versión anterior, haz una <strong>nueva implementación</strong> (no editar la existente)</li>
           </ol>
+          <div style="margin-top:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Código Apps Script</span>
+              <button class="btn btn-sm" onclick="copyAppsScript()">📋 Copiar código</button>
+            </div>
+            <pre id="apps-script-code" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:11px;color:var(--text2);overflow-x:auto;max-height:200px;overflow-y:auto;font-family:var(--mono);line-height:1.6;white-space:pre"></pre>
+          </div>
         </div>
       </details>
       <div class="form-row cols-2">
@@ -498,8 +507,20 @@ function setSyncStatus(state,text){document.getElementById('sync-dot').className
 async function syncToCloud(silent){
   var url=getScriptUrl();if(!url){if(!silent)toast('Configura la URL primero');return;}
   setSyncStatus('syncing','Guardando\u2026');
-  try{var r=await fetch(url+'?action=syncAll',{method:'POST',body:JSON.stringify(DB),redirect:'follow'});var d=await r.json();if(d.error)throw new Error(d.error);setSyncStatus('ok','Guardado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));if(!silent)toast('Sincronizado \u2713');}
-  catch(e){setSyncStatus('error','Error');if(!silent)toast('Error: '+e.message,4000);}
+  try{
+    var r=await fetch(url+'?action=syncAll',{method:'POST',body:JSON.stringify(DB),redirect:'follow'});
+    var d=await r.json();
+    if(d.error)throw new Error(d.error);
+    setSyncStatus('ok','Guardado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));
+    if(!silent)toast('Sincronizado \u2713');
+  }catch(e){
+    setSyncStatus('error','Error: '+e.message.slice(0,40));
+    if(!silent)toast('Error al sincronizar: '+e.message,5000);
+    else{
+      // Muestra el error en el dot aunque sea silencioso
+      document.getElementById('sync-text').textContent='Error \u2014 haz clic en \u2601 para reintentar';
+    }
+  }
 }
 async function loadFromCloud(){
   var url=getScriptUrl();if(!url)return toast('Configura la URL primero');
@@ -557,26 +578,64 @@ function addMateria(data){
   var precio=data?data.precio:parseFloat(document.getElementById('mp-precio').value);
   var cantidad=data?data.cantidad:parseFloat(document.getElementById('mp-cantidad').value);
   var unidad=data?data.unidad:document.getElementById('mp-unidad').value;
+  var categoria=data?data.categoria:(document.getElementById('mp-categoria').value||'otros');
   if(!nombre)return toast('Introduce el nombre');if(!precio||precio<=0)return toast('Introduce el precio');if(!cantidad||cantidad<=0)return toast('Introduce la cantidad');
   var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===nombre.toLowerCase();});var now=new Date().toISOString();var fd=data&&data._fecha?data._fecha:now.slice(0,10);
-  if(ex){var ef=ex.facturaFecha||'2000-01-01';if(fd>=ef){ex.precio=precio;ex.cantidad=cantidad;ex.unidad=unidad;ex.costeUnit=precio/cantidad;ex.updatedAt=now;ex.facturaFecha=fd;toast('"'+nombre+'" actualizado \u2713');}else{toast('\u26a0 "'+nombre+'" no actualizado: factura m\u00e1s antigua',3500);}}
-  else{DB.materias.push({id:genId(),nombre:nombre,precio:precio,cantidad:cantidad,unidad:unidad,costeUnit:precio/cantidad,createdAt:now,updatedAt:now,facturaFecha:fd});toast('"'+nombre+'" a\u00f1adido \u2713');}
+  if(ex){var ef=ex.facturaFecha||'2000-01-01';if(fd>=ef){ex.precio=precio;ex.cantidad=cantidad;ex.unidad=unidad;ex.categoria=categoria||ex.categoria||'otros';ex.costeUnit=precio/cantidad;ex.updatedAt=now;ex.facturaFecha=fd;toast('"'+nombre+'" actualizado \u2713');}else{toast('\u26a0 "'+nombre+'" no actualizado: factura m\u00e1s antigua',3500);}}
+  else{DB.materias.push({id:genId(),nombre:nombre,categoria:categoria||'otros',precio:precio,cantidad:cantidad,unidad:unidad,costeUnit:precio/cantidad,createdAt:now,updatedAt:now,facturaFecha:fd});toast('"'+nombre+'" a\u00f1adido \u2713');}
   saveLocal();scheduleSync();
   if(!data){document.getElementById('mp-nombre').value='';document.getElementById('mp-precio').value='';document.getElementById('mp-cantidad').value='';document.getElementById('mp-preview').textContent='';}
   renderMaterias();
 }
 function deleteMateria(id){var mp=DB.materias.find(function(m){return m.id===id;});if(DB.articulos.some(function(a){return(a.ingredientes||[]).some(function(i){return i.materiaId===id;});}))return toast('Est\u00e1 en uso en un art\u00edculo');if(!confirm('\u00bfEliminar "'+mp.nombre+'"?'))return;DB.materias=DB.materias.filter(function(m){return m.id!==id;});saveLocal();scheduleSync();renderMaterias();toast('Eliminada');}
+var CAT_ICONS={'lácteos':'🥛','harinas y masas':'🌾','siropes y jarabes':'🍯','frutas y verduras':'🥦','carnes y pescados':'🥩','aceites y vinagres':'🫙','especias y salsas':'🌶','dulces y chocolates':'🍫','bebidas y aguas':'💧','huevos':'🥚','frutos secos':'🥜','congelados':'🧊','otros':'📦'};
+var CAT_LIST=['lácteos','harinas y masas','siropes y jarabes','frutas y verduras','carnes y pescados','aceites y vinagres','especias y salsas','dulces y chocolates','bebidas y aguas','huevos','frutos secos','congelados','otros'];
+var collapsedCats={};
+
+function changeCatMateria(id,val){var m=DB.materias.find(function(x){return x.id===id;});if(m){m.categoria=val;saveLocal();scheduleSync();renderMaterias();}}
+
 function renderMaterias(){
   var wrap=document.getElementById('mp-table');var count=document.getElementById('mp-count');
   if(!DB.materias.length){wrap.innerHTML='<div class="empty"><div class="empty-icon">\u229e</div><div class="empty-title">Sin ingredientes</div><div class="empty-desc">A\u00f1ade uno o importa desde una factura</div></div>';count.textContent='';return;}
   count.textContent=DB.materias.length+' ingrediente'+(DB.materias.length!==1?'s':'');
-  var sorted=DB.materias.slice().sort(function(a,b){return a.nombre.localeCompare(b.nombre);});
-  var rows=sorted.map(function(m){
-    var fd=m.facturaFecha?'<span style="font-size:11px;color:var(--text2);margin-left:8px;font-family:var(--mono)">'+m.facturaFecha+'</span>':'';
-    return '<tr><td><strong style="font-weight:500">'+m.nombre+'</strong>'+fd+'</td><td class="mono" style="color:var(--text2)">'+fmtE(m.precio)+'</td><td class="mono" style="color:var(--text2)">'+fmt(m.cantidad)+' '+m.unidad+'</td><td class="mono" style="color:var(--accent);font-weight:500">'+fmtE4(m.costeUnit)+'/'+m.unidad+'</td><td><button class="btn btn-sm btn-danger" onclick="deleteMateria(\''+m.id+'\')">Eliminar</button></td></tr>';
-  }).join('');
-  wrap.innerHTML='<table class="data-table"><thead><tr><th>Ingrediente</th><th>Precio c/IVA</th><th>Cantidad</th><th>Coste unitario</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+  // Group by categoria
+  var groups={};
+  DB.materias.forEach(function(m){var cat=m.categoria||'otros';if(!groups[cat])groups[cat]=[];groups[cat].push(m);});
+  // Sort cats: defined order first, then alphabetical
+  var catKeys=Object.keys(groups).sort(function(a,b){var ia=CAT_LIST.indexOf(a);var ib=CAT_LIST.indexOf(b);if(ia===-1&&ib===-1)return a.localeCompare(b);if(ia===-1)return 1;if(ib===-1)return -1;return ia-ib;});
+  var catOpts=CAT_LIST.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+  var html='';
+  catKeys.forEach(function(cat){
+    var items=groups[cat].slice().sort(function(a,b){return a.nombre.localeCompare(b.nombre);});
+    var icon=CAT_ICONS[cat]||'📦';
+    var collapsed=collapsedCats[cat];
+    var hid=('cat_'+cat).replace(/\s+/g,'_');
+    html+='<div style="margin-bottom:4px">';
+    // Category header
+    html+='<div onclick="toggleCat(\''+cat+'\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);cursor:pointer;user-select:none;margin-bottom:2px">'
+      +'<span style="font-size:15px">'+icon+'</span>'
+      +'<span style="font-size:12px;font-weight:600;color:var(--text);flex:1;text-transform:capitalize">'+cat+'</span>'
+      +'<span style="font-size:11px;color:var(--text3)">'+items.length+' ingrediente'+(items.length!==1?'s':'')+'</span>'
+      +'<span style="font-size:12px;color:var(--text3);margin-left:6px;transition:transform .2s;'+(collapsed?'':'transform:rotate(90deg)')+'">▶</span>'
+      +'</div>';
+    // Rows
+    html+='<div id="'+hid+'" style="'+(collapsed?'display:none':'')+'"><table class="data-table" style="margin-bottom:0"><tbody>';
+    items.forEach(function(m){
+      var fd=m.facturaFecha?'<span style="font-size:11px;color:var(--text2);margin-left:8px;font-family:var(--mono)">'+m.facturaFecha+'</span>':'';
+      var catSel='<select onchange="changeCatMateria(\''+m.id+'\',this.value)" style="background:var(--surface2);font-size:11px;padding:3px 5px;border-radius:4px;color:var(--text2);border-color:var(--border)">'+CAT_LIST.map(function(c){return '<option value="'+c+'"'+(c===cat?' selected':'')+'>'+c+'</option>';}).join('')+'</select>';
+      html+='<tr>'
+        +'<td><strong style="font-weight:500">'+m.nombre+'</strong>'+fd+'<div style="margin-top:3px">'+catSel+'</div></td>'
+        +'<td class="mono" style="color:var(--text2)">'+fmtE(m.precio)+'</td>'
+        +'<td class="mono" style="color:var(--text2)">'+fmt(m.cantidad)+' '+m.unidad+'</td>'
+        +'<td class="mono" style="color:var(--accent);font-weight:500">'+fmtE4(m.costeUnit)+'/'+m.unidad+'</td>'
+        +'<td><button class="btn btn-sm btn-danger" onclick="deleteMateria(\''+m.id+'\')">Eliminar</button></td>'
+        +'</tr>';
+    });
+    html+='</tbody></table></div></div>';
+  });
+  wrap.innerHTML=html;
 }
+function toggleCat(cat){collapsedCats[cat]=!collapsedCats[cat];renderMaterias();}
 
 // ── INVOICE PROMPT ──
 var INVOICE_PROMPT = [
@@ -607,8 +666,23 @@ var INVOICE_PROMPT = [
   '   leche botella 1.5L -> medida_unitaria=1.5, unidad_medida="L".',
   '   mantequilla 5kg (1 bloque) -> medida_unitaria=5, unidad_medida="kg".',
   '',
+  '6. categoria: clasifica el producto en UNA de estas categorias exactas:',
+  '   "lácteos" (leche, nata, mantequilla, queso, yogur)',
+  '   "harinas y masas" (harina, pan, croissant, bollería, pasta)',
+  '   "siropes y jarabes" (sirope, jarabe, topping, monin, rioba)',
+  '   "frutas y verduras" (fruta, verdura, hortaliza)',
+  '   "carnes y pescados" (carne, pollo, ternera, salmón, atún)',
+  '   "aceites y vinagres" (aceite, vinagre)',
+  '   "especias y salsas" (salsa, ketchup, mayonesa, mostaza, especias)',
+  '   "dulces y chocolates" (chocolate, cacao, azúcar, miel, mermelada, nutella)',
+  '   "bebidas y aguas" (agua, zumo, refresco, bebida)',
+  '   "huevos" (huevo)',
+  '   "frutos secos" (almendra, avellana, nuez, cacahuete)',
+  '   "congelados" (cualquier producto congelado)',
+  '   "otros" (si no encaja en ninguna categoría anterior)',
+  '',
   'Responde SOLO con JSON valido:',
-  '{"fecha":"YYYY-MM-DD","productos":[{"nombre":"string","precio_caja":number,"cantidad":number,"unidad":"ud/kg/g/L/mL","medida_unitaria":number,"unidad_medida":"g/mL/L/kg","confianza":"alta/media/baja","detalle":"string"}],"nota":"string"}'
+  '{"fecha":"YYYY-MM-DD","productos":[{"nombre":"string","precio_caja":number,"cantidad":number,"unidad":"ud/kg/g/L/mL","medida_unitaria":number,"unidad_medida":"g/mL/L/kg","categoria":"string","confianza":"alta/media/baja","detalle":"string"}],"nota":"string"}'
 ].join('\n');
 
 var QT_PROMPT_BASE = [
@@ -644,7 +718,7 @@ async function processFiles(files){
         var fd=result.fecha||new Date().toISOString().slice(0,10);
         result.productos.forEach(function(p,j){
           var pc=p.precio_caja||p.precio_total||0;
-          invoiceItems.push({nombre:p.nombre||'',precio_caja:pc,precio_total:pc,cantidad:p.cantidad||1,unidad:p.unidad||'ud',medida_unitaria:p.medida_unitaria||null,unidad_medida:p.unidad_medida||null,confianza:p.confianza||'alta',detalle:p.detalle||'',_id:'inv_'+i+'_'+j,_selected:true,_source:files[i].name,_fecha:fd});
+          invoiceItems.push({nombre:p.nombre||'',precio_caja:pc,precio_total:pc,cantidad:p.cantidad||1,unidad:p.unidad||'ud',medida_unitaria:p.medida_unitaria||null,unidad_medida:p.unidad_medida||null,categoria:p.categoria||'otros',confianza:p.confianza||'alta',detalle:p.detalle||'',_id:'inv_'+i+'_'+j,_selected:true,_source:files[i].name,_fecha:fd});
         });
         statEl.textContent=result.productos.length+' productos';statEl.style.color='var(--green-text)';
       }else{statEl.textContent='0 productos';statEl.style.color='var(--text3)';}
@@ -685,7 +759,7 @@ async function processQuickText(){
     var d=await resp.json();
     var txt=d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts?d.candidates[0].content.parts.map(function(p){return p.text||'';}).join(''):'';
     var parsed=parseGeminiJSON(txt);
-    invoiceItems=parsed.productos.map(function(p,i){var pc=p.precio_caja||p.precio_total||0;return{nombre:p.nombre||'',precio_caja:pc,precio_total:pc,cantidad:p.cantidad||1,unidad:p.unidad||'ud',medida_unitaria:p.medida_unitaria||null,unidad_medida:p.unidad_medida||null,confianza:p.confianza||'alta',detalle:p.detalle||'',_id:'qt_'+i,_selected:true,_source:'Entrada manual',_fecha:parsed.fecha||today};});
+    invoiceItems=parsed.productos.map(function(p,i){var pc=p.precio_caja||p.precio_total||0;return{nombre:p.nombre||'',precio_caja:pc,precio_total:pc,cantidad:p.cantidad||1,unidad:p.unidad||'ud',medida_unitaria:p.medida_unitaria||null,unidad_medida:p.unidad_medida||null,categoria:p.categoria||'otros',confianza:p.confianza||'alta',detalle:p.detalle||'',_id:'qt_'+i,_selected:true,_source:'Entrada manual',_fecha:parsed.fecha||today};});
     spinner.style.display='none';renderInvoiceResults();document.getElementById('invoice-results').style.display='block';
     toast('\u2713 '+invoiceItems.length+' producto'+(invoiceItems.length!==1?'s':'')+' detectado'+(invoiceItems.length!==1?'s':''));
   }catch(e){spinner.style.display='none';toast('Error: '+e.message,5000);}
@@ -768,7 +842,7 @@ function selectAllInvoice(){invoiceItems.forEach(function(i){i._selected=true;va
 function importSelected(){
   var sel=invoiceItems.filter(function(i){return i._selected;});if(!sel.length)return toast('Selecciona al menos un producto');
   var added=0,updated=0,skipped=0;var now=new Date().toISOString();
-  sel.forEach(function(item){if(!item.nombre||!item.precio_caja||!item.cantidad)return;var fd=item._fecha||now.slice(0,10);var pc=item.precio_caja;var cant=item.cantidad;var medVal=item.medida_unitaria;var medUnit=item.unidad_medida||item.unidad||'ud';var cuReal;if(medVal&&parseFloat(medVal)>0){cuReal=pc/(cant*parseFloat(medVal));}else{cuReal=cant>0?pc/cant:pc;}var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===item.nombre.toLowerCase();});if(ex){var ef=ex.facturaFecha||'2000-01-01';if(fd>=ef){ex.precio=pc;ex.cantidad=cant;ex.unidad=medUnit;ex.costeUnit=cuReal;ex.updatedAt=now;ex.facturaFecha=fd;updated++;}else{skipped++;}}else{DB.materias.push({id:genId(),nombre:item.nombre,precio:pc,cantidad:cant,unidad:medUnit,costeUnit:cuReal,createdAt:now,updatedAt:now,facturaFecha:fd});added++;}});
+  sel.forEach(function(item){if(!item.nombre||!item.precio_caja||!item.cantidad)return;var fd=item._fecha||now.slice(0,10);var pc=item.precio_caja;var cant=item.cantidad;var medVal=item.medida_unitaria;var medUnit=item.unidad_medida||item.unidad||'ud';var categoria=item.categoria||'otros';var cuReal;if(medVal&&parseFloat(medVal)>0){cuReal=pc/(cant*parseFloat(medVal));}else{cuReal=cant>0?pc/cant:pc;}var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===item.nombre.toLowerCase();});if(ex){var ef=ex.facturaFecha||'2000-01-01';if(fd>=ef){ex.precio=pc;ex.cantidad=cant;ex.unidad=medUnit;ex.categoria=categoria;ex.costeUnit=cuReal;ex.updatedAt=now;ex.facturaFecha=fd;updated++;}else{skipped++;}}else{DB.materias.push({id:genId(),nombre:item.nombre,categoria:categoria,precio:pc,cantidad:cant,unidad:medUnit,costeUnit:cuReal,createdAt:now,updatedAt:now,facturaFecha:fd});added++;}});
   saveLocal();scheduleSync();document.getElementById('invoice-results').style.display='none';invoiceItems=[];
   var msg='\u2713 '+added+' a\u00f1adido'+(added!==1?'s':'')+', '+updated+' actualizado'+(updated!==1?'s':'');if(skipped)msg+=', '+skipped+' omitido'+(skipped!==1?'s':'')+' (factura antigua)';
   toast(msg,3500);showPage('materias',document.querySelectorAll('.nav-item')[1]);
@@ -943,8 +1017,113 @@ function deduplicarMaterias(){
   toast('✓ '+eliminados+' duplicado'+(eliminados!==1?'s':'')+' eliminado'+(eliminados!==1?'s':''));
 }
 
+// ── APPS SCRIPT CODE ──
+var APPS_SCRIPT_CODE = `// Escaramuza — Google Apps Script v3
+// Pega este código en script.google.com → Nueva implementación → App web → Cualquier usuario
+
+var SHEET_NAME_MATERIAS = 'materias';
+var SHEET_NAME_ARTICULOS = 'articulos';
+
+function doGet(e) {
+  var action = e.parameter.action;
+  if (action === 'ping') return ok({status:'ok'});
+  if (action === 'getAll') return ok(getAllData());
+  return ok({error:'accion desconocida'});
+}
+
+function doPost(e) {
+  var action = e.parameter.action;
+  if (action === 'syncAll') {
+    try {
+      var data = JSON.parse(e.postData.contents);
+      syncAll(data);
+      return ok({status:'ok'});
+    } catch(err) {
+      return ok({error: err.message});
+    }
+  }
+  return ok({error:'accion desconocida'});
+}
+
+function ok(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getOrCreateSheet(name, headers) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function syncAll(data) {
+  // ── MATERIAS ──
+  var mHeaders = ['id','nombre','categoria','precio','cantidad','unidad','costeUnit','facturaFecha','createdAt','updatedAt'];
+  var mSh = getOrCreateSheet(SHEET_NAME_MATERIAS, mHeaders);
+  mSh.clearContents();
+  mSh.getRange(1,1,1,mHeaders.length).setValues([mHeaders]);
+  if (data.materias && data.materias.length) {
+    var mRows = data.materias.map(function(m) {
+      return [m.id||'', m.nombre||'', m.categoria||'otros', m.precio||0, m.cantidad||0,
+              m.unidad||'ud', m.costeUnit||0, m.facturaFecha||'', m.createdAt||'', m.updatedAt||''];
+    });
+    mSh.getRange(2,1,mRows.length,mHeaders.length).setValues(mRows);
+  }
+  // ── ARTICULOS ──
+  var aHeaders = ['id','nombre','categoria','precioVenta','ingredientes','createdAt','updatedAt'];
+  var aSh = getOrCreateSheet(SHEET_NAME_ARTICULOS, aHeaders);
+  aSh.clearContents();
+  aSh.getRange(1,1,1,aHeaders.length).setValues([aHeaders]);
+  if (data.articulos && data.articulos.length) {
+    var aRows = data.articulos.map(function(a) {
+      return [a.id||'', a.nombre||'', a.categoria||'', a.precioVenta||0,
+              JSON.stringify(a.ingredientes||[]), a.createdAt||'', a.updatedAt||''];
+    });
+    aSh.getRange(2,1,aRows.length,aHeaders.length).setValues(aRows);
+  }
+}
+
+function getAllData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var materias = [], articulos = [];
+  var mSh = ss.getSheetByName(SHEET_NAME_MATERIAS);
+  if (mSh && mSh.getLastRow() > 1) {
+    var mData = mSh.getRange(2, 1, mSh.getLastRow()-1, 10).getValues();
+    materias = mData.filter(function(r){return r[0];}).map(function(r) {
+      return {id:r[0],nombre:r[1],categoria:r[2]||'otros',precio:r[3],cantidad:r[4],
+              unidad:r[5],costeUnit:r[6],facturaFecha:r[7],createdAt:r[8],updatedAt:r[9]};
+    });
+  }
+  var aSh = ss.getSheetByName(SHEET_NAME_ARTICULOS);
+  if (aSh && aSh.getLastRow() > 1) {
+    var aData = aSh.getRange(2, 1, aSh.getLastRow()-1, 7).getValues();
+    articulos = aData.filter(function(r){return r[0];}).map(function(r) {
+      var ings = [];
+      try { ings = JSON.parse(r[4]||'[]'); } catch(e){}
+      return {id:r[0],nombre:r[1],categoria:r[2],precioVenta:r[3],
+              ingredientes:ings,createdAt:r[5],updatedAt:r[6]};
+    });
+  }
+  return {materias:materias, articulos:articulos};
+}`;
+
+function copyAppsScript(){
+  var el=document.getElementById('apps-script-code');
+  navigator.clipboard.writeText(el.textContent).then(function(){toast('Código copiado \u2713');}).catch(function(){toast('Selecciona y copia el texto manualmente');});
+}
+
+function initAppsScriptPreview(){
+  var el=document.getElementById('apps-script-code');
+  if(el)el.textContent=APPS_SCRIPT_CODE;
+}
+
 // ── INIT ──
-loadLocal();loadScriptUrlStatus();renderDashboard();
+loadLocal();loadScriptUrlStatus();renderDashboard();initAppsScriptPreview();
 if(getScriptUrl())setTimeout(function(){loadFromCloud();},800);
 </script>
 </body>
