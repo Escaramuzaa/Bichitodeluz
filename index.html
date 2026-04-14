@@ -618,14 +618,15 @@ async function loadData(){
       if(!Array.isArray(a.ingredientes))a.ingredientes=[];
       return a;
     });
-    // Auto-dedup
+    // Auto-dedup: detectar duplicados y eliminarlos de Supabase
     var antes=DB.materias.length;
+    var idsAntes=DB.materias.map(function(m){return m.id;});
     DB.materias=deduplicarSilencioso(DB.materias);
-    if(DB.materias.length<antes){
-      // Guardar versión limpia
-      var ids=DB.materias.map(function(m){return m.id;});
-      // Los que no están en ids se eliminan
-      toast('🔁 '+(antes-DB.materias.length)+' duplicados eliminados');
+    var idsDepues=DB.materias.map(function(m){return m.id;});
+    var paraEliminar=idsAntes.filter(function(id){return idsDepues.indexOf(id)===-1;});
+    if(paraEliminar.length){
+      await Promise.all(paraEliminar.map(function(id){return sb.from('materias').delete().eq('id',id);}));
+      toast('\uD83D\uDD01 '+(antes-DB.materias.length)+' duplicados eliminados de la base de datos');
     }
     setSyncStatus('ok','Actualizado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));
     renderMaterias(); renderArticulos(); renderDashboard();
@@ -820,25 +821,68 @@ function deduplicarMaterias(){
 // INVOICE PROMPT
 // ═══════════════════════════════════════
 var INVOICE_PROMPT=[
-  'Eres un asistente para leer facturas de hosteleria en Espana.',
-  'EXTRAE la fecha de la factura en formato YYYY-MM-DD.',
+  'Eres un experto en hosteleria y gestion de costes para cafeterias en Espana.',
+  'Tu tarea: extraer ingredientes de una factura de proveedor (Makro, Sysco, etc).',
   '',
-  'Para cada ingrediente de cocina/cafeteria (ignora limpieza, envases, guantes, material):',
+  'FECHA: extrae la fecha de la factura en formato YYYY-MM-DD.',
   '',
-  '1. nombre: nombre GENERICO en minusculas sin marcas ni codigos.',
-  '2. precio_caja: precio CON IVA incluido de UNA sola unidad de compra.',
-  '   En Makro: IMP=1 x1.10, IMP=5 x1.04, IMP=2 x1.21.',
-  '3. cantidad: piezas por caja/bolsa.',
-  '4. unidad: "ud","kg","g","L","mL".',
-  '5. medida_unitaria + unidad_medida: peso/volumen por pieza.',
-  '6. categoria: una de: lacteos, harinas y masas, siropes y jarabes, frutas y verduras, carnes y pescados, aceites y vinagres, especias y salsas, dulces y chocolates, bebidas y aguas, huevos, frutos secos, congelados, alcohol, otros.',
+  'REGLAS DE NOMBRE (muy importante):',
+  '- Nombre GENERICO, en minusculas, sin marcas comerciales, sin codigos, sin pesos',
+  '- Elimina: MC, ARO, BT, PET, IGP, DOP, RIOBA, BORGES, KNORR, ASTURIANA, FONT VELLA, etc',
+  '- Ejemplos: "CROISSANT MANTEQUILLA MC 20X60G" → "croissant mantequilla"',
+  '- "NATA MONTAR 35% MG ARO 1L" → "nata montar 35%"',
+  '- "SIROPE RIOBA VAINILLA 700ML" → "sirope vainilla"',
+  '- "LECHE HOSTELERIA ASTURIANA BT 1.5L" → "leche"',
+  '- "QSO CREMA CB MC 5KG" → "queso crema"',
+  '- "AGUA FONT VELLA 50CL PET" → "agua"',
+  '- "TARTA MANZANA ARO 1250G" → "tarta manzana"',
+  '- "PAN RALLADO CRUJIENTE MC 4KG" → "pan rallado crujiente"',
   '',
-  'JSON: {"fecha":"YYYY-MM-DD","productos":[{"nombre":"","precio_caja":0,"cantidad":0,"unidad":"","medida_unitaria":0,"unidad_medida":"","categoria":"","confianza":"alta/media/baja","detalle":""}]}'
+  'PRECIO: precio_caja = precio de UNA unidad de compra CON IVA incluido.',
+  '- En Makro usa la columna "Prec.Ud" (no el importe total)',
+  '- IMP=1 (alimentos 10%): multiplica x1.10',
+  '- IMP=5 (frescos 4%): multiplica x1.04',
+  '- IMP=2 (otros 21%): multiplica x1.21',
+  '',
+  'CANTIDAD y MEDIDA (muy importante):',
+  '- cantidad = numero de piezas/unidades dentro de la caja o bolsa',
+  '- "CROISSANT 20X60G" → cantidad=20, medida_unitaria=60, unidad_medida="g"',
+  '- "LECHE BT 1.5L" → cantidad=1, medida_unitaria=1.5, unidad_medida="L" (o 6 si son 6 botellas)',
+  '- "SIROPE 700ML" → cantidad=1, medida_unitaria=700, unidad_medida="mL"',
+  '- "MANTEQUILLA BLOQUE 5KG" → cantidad=1, medida_unitaria=5, unidad_medida="kg"',
+  '- "TARTA MANZANA 1250G" → cantidad=1, medida_unitaria=1250, unidad_medida="g"',
+  '- "BOLSA PAN RALLADO 4KG" → cantidad=1, medida_unitaria=4, unidad_medida="kg"',
+  '',
+  'CATEGORIA: clasifica en una de estas exactamente:',
+  '- "lacteos": leche, nata, mantequilla, queso, yogur, burrata',
+  '- "harinas y masas": harina, pan, croissant, bolleria, pasta, masa',
+  '- "siropes y jarabes": sirope, jarabe, topping, monin, rioba',
+  '- "frutas y verduras": fruta, verdura, hortaliza, aguacate',
+  '- "carnes y pescados": carne, pollo, ternera, salmon, atun, jamon',
+  '- "aceites y vinagres": aceite, vinagre, aove',
+  '- "especias y salsas": salsa, ketchup, mayonesa, mostaza, especias, alioli',
+  '- "dulces y chocolates": chocolate, cacao, azucar, miel, mermelada, nutella, dulce de leche',
+  '- "bebidas y aguas": agua, zumo, refresco, bebida',
+  '- "huevos": huevo',
+  '- "frutos secos": almendra, avellana, nuez, cacahuete, piñon',
+  '- "congelados": cualquier producto congelado',
+  '- "alcohol": vino, cerveza, ron, vodka, gin, whisky, licor',
+  '- "otros": si no encaja',
+  '',
+  'IGNORA completamente: productos de limpieza, guantes, envases, material de oficina, vajilla.',
+  '',
+  'Responde SOLO con JSON valido, sin texto extra, sin markdown:',
+  '{"fecha":"YYYY-MM-DD","productos":[{"nombre":"string","precio_caja":number,"cantidad":number,"unidad":"ud|kg|g|L|mL","medida_unitaria":number,"unidad_medida":"g|mL|L|kg|ud","categoria":"string","confianza":"alta|media|baja","detalle":"descripcion original del producto"}],"nota":"string"}'
 ].join('\n');
 
 var QT_PROMPT_BASE=[
-  'Eres un asistente de hosteleria. precio_caja CON IVA. Si dice "2 bolsas 12 euros" precio_caja=6.',
-  'JSON: {"fecha":"FECHA_HOY","productos":[{"nombre":"","precio_caja":0,"cantidad":0,"unidad":"","medida_unitaria":0,"unidad_medida":"","categoria":"","confianza":"alta/media/baja","detalle":""}]}'
+  'Eres un experto en hosteleria. El usuario describe compras en lenguaje natural.',
+  'Extrae cada producto con nombre generico en minusculas sin marcas.',
+  'precio_caja = precio CON IVA de UNA unidad. Si dice "2 bolsas 12 euros" → precio_caja=6.',
+  'cantidad = piezas por unidad de compra. medida_unitaria+unidad_medida = peso/volumen por pieza.',
+  'Hoy es FECHA_HOY.',
+  'Responde SOLO con JSON valido:',
+  '{"fecha":"FECHA_HOY","productos":[{"nombre":"string","precio_caja":number,"cantidad":number,"unidad":"ud|kg|g|L|mL","medida_unitaria":number,"unidad_medida":"g|mL|L|kg","categoria":"string","confianza":"alta|media|baja","detalle":"string"}]}'
 ].join('\n');
 
 // ═══════════════════════════════════════
@@ -967,28 +1011,74 @@ function selectAllInvoice(){invoiceItems.forEach(function(i){i._selected=true;va
 async function importSelected(){
   var sel=invoiceItems.filter(function(i){return i._selected;});
   if(!sel.length)return toast('Selecciona al menos un producto');
-  var added=0,updated=0,skipped=0;var now=new Date().toISOString();
+  var added=0,updated=0,skipped=0,eliminados=0;
+  var now=new Date().toISOString();
+
   for(var si=0;si<sel.length;si++){
     var s=sel[si];
     if(!s.nombre||!s.precio_caja||!s.cantidad)continue;
     var fd=s._fecha||now.slice(0,10);
-    var pc=s.precio_caja;var cant=s.cantidad;
-    var medVal=s.medida_unitaria;var medUnit=s.unidad_medida||s.unidad||'ud';
-    var cuReal=medVal&&parseFloat(medVal)>0?pc/(cant*parseFloat(medVal)):cant>0?pc/cant:pc;
+    var pc=s.precio_caja;
+    var cant=s.cantidad;
+    var medVal=s.medida_unitaria;
+    var medUnit=s.unidad_medida||s.unidad||'ud';
+    // Coste unitario real: precio / (cantidad * medida)
+    var cuReal=medVal&&parseFloat(medVal)>0 ? pc/(cant*parseFloat(medVal)) : cant>0 ? pc/cant : pc;
+
+    // Buscar coincidencia — exacta primero, luego fuzzy por nombre normalizado
+    var nombreNorm=normNombre(s.nombre);
     var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===s.nombre.toLowerCase();});
+    if(!ex){
+      ex=DB.materias.find(function(m){return normNombre(m.nombre)===nombreNorm;});
+    }
+
+    // Buscar TODOS los duplicados del mismo producto para eliminarlos
+    var duplicados=DB.materias.filter(function(m){
+      return m!==ex && normNombre(m.nombre)===nombreNorm;
+    });
+
     if(ex){
       var ef=ex.facturaFecha||ex.factura_fecha||'2000-01-01';
-      if(fd>=ef){ex.precio=pc;ex.cantidad=cant;ex.unidad=medUnit;ex.categoria=s.categoria||ex.categoria||'otros';ex.costeUnit=cuReal;ex.coste_unit=cuReal;ex.facturaFecha=fd;ex.factura_fecha=fd;ex.updated_at=now;await saveMateria(ex);updated++;}
-      else{skipped++;}
+      if(fd>=ef){
+        // Actualizar con datos más recientes
+        ex.precio=pc; ex.cantidad=cant; ex.unidad=medUnit;
+        ex.categoria=s.categoria||ex.categoria||'otros';
+        ex.costeUnit=cuReal; ex.coste_unit=cuReal;
+        ex.facturaFecha=fd; ex.factura_fecha=fd;
+        ex.updated_at=now;
+        await saveMateria(ex);
+        updated++;
+      }else{
+        skipped++;
+      }
+      // Eliminar duplicados viejos de Supabase y de DB local
+      for(var di=0;di<duplicados.length;di++){
+        await deleteMateriaSB(duplicados[di].id);
+        DB.materias=DB.materias.filter(function(m){return m.id!==duplicados[di].id;});
+        eliminados++;
+      }
     }else{
-      var m={id:genId(),nombre:s.nombre,categoria:s.categoria||'otros',precio:pc,cantidad:cant,unidad:medUnit,costeUnit:cuReal,coste_unit:cuReal,facturaFecha:fd,factura_fecha:fd,created_at:now,updated_at:now};
-      DB.materias.push(m);await saveMateria(m);added++;
+      // Nuevo producto
+      var m={
+        id:genId(), nombre:s.nombre, categoria:s.categoria||'otros',
+        precio:pc, cantidad:cant, unidad:medUnit,
+        costeUnit:cuReal, coste_unit:cuReal,
+        facturaFecha:fd, factura_fecha:fd,
+        created_at:now, updated_at:now
+      };
+      DB.materias.push(m);
+      await saveMateria(m);
+      added++;
     }
   }
-  document.getElementById('invoice-results').style.display='none';invoiceItems=[];
-  var msg='✓ '+added+' añadido'+(added!==1?'s':'')+', '+updated+' actualizado'+(updated!==1?'s':'');
-  if(skipped)msg+=', '+skipped+' omitido'+(skipped!==1?'s':'')+' (factura antigua)';
-  renderMaterias();renderDashboard();toast(msg,4000);
+
+  document.getElementById('invoice-results').style.display='none';
+  invoiceItems=[];
+  renderMaterias(); renderDashboard();
+  var msg='✓ '+added+' nuevo'+(added!==1?'s':'')+', '+updated+' actualizado'+(updated!==1?'s':'');
+  if(skipped)msg+=', '+skipped+' omitido'+(skipped!==1?'s':'');
+  if(eliminados)msg+=', '+eliminados+' duplicado'+(eliminados!==1?'s':'')+' eliminado'+(eliminados!==1?'s':'');
+  toast(msg, 4000);
 }
 
 // ═══════════════════════════════════════
