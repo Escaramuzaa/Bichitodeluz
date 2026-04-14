@@ -558,7 +558,7 @@ async function doLogin(){
     if(res.error) throw res.error;
     onLogin(res.data.user);
   }catch(e){
-    err.textContent = e.message||'Error al iniciar sesión';
+    err.textContent = e.message||'Error al iniciar sesi\u00f3n';
     btn.textContent='Entrar'; btn.disabled=false;
   }
 }
@@ -968,7 +968,8 @@ async function importSelected(){
   var sel=invoiceItems.filter(function(i){return i._selected;});
   if(!sel.length)return toast('Selecciona al menos un producto');
   var added=0,updated=0,skipped=0;var now=new Date().toISOString();
-  for(var s of sel){
+  for(var si=0;si<sel.length;si++){
+    var s=sel[si];
     if(!s.nombre||!s.precio_caja||!s.cantidad)continue;
     var fd=s._fecha||now.slice(0,10);
     var pc=s.precio_caja;var cant=s.cantidad;
@@ -986,7 +987,7 @@ async function importSelected(){
   }
   document.getElementById('invoice-results').style.display='none';invoiceItems=[];
   var msg='✓ '+added+' añadido'+(added!==1?'s':'')+', '+updated+' actualizado'+(updated!==1?'s':'');
-  if(skipped)msg+=', '+skipped+' omitido'+(skipped!==1?'s')+' (factura antigua)';
+  if(skipped)msg+=', '+skipped+' omitido'+(skipped!==1?'s':'')+' (factura antigua)';
   renderMaterias();renderDashboard();toast(msg,4000);
 }
 
