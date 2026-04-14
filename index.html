@@ -6,7 +6,6 @@
 <title>Gestor de Precios — Cafetería</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* Mantengo todos tus estilos originales intactos */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#f5f4f0;--surface:#fff;--surface2:#eeece7;--border:#e0ddd7;--border2:#c9c5bd;--text:#1c1b18;--text2:#6b6760;--text3:#a09c96;--accent:#2d5a27;--accent-light:#e8f2e6;--accent-text:#1e3d1a;--warn:#7a4a00;--warn-bg:#fff3e0;--danger:#8b2020;--danger-bg:#fde8e8;--info:#1a4a7a;--info-bg:#e8f0fa;--radius:10px;--radius-sm:6px;--font:'DM Sans',system-ui,sans-serif;--mono:'DM Mono',monospace}
 body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
@@ -32,6 +31,7 @@ h2{font-size:20px;font-weight:600;letter-spacing:-.4px;margin-bottom:4px}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
 .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn-danger{color:var(--danger);border-color:#f5c0c0}.btn-danger:hover{background:var(--danger-bg)}
+.btn-sm{padding:4px 10px;font-size:12px}
 input[type="text"],input[type="number"],input[type="password"],select,textarea{width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;outline:none}
 label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
 .form-row{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end}
@@ -56,6 +56,9 @@ td{padding:10px 12px;vertical-align:middle}
 .modal{background:var(--surface);border-radius:var(--radius);width:100%;max-width:580px;max-height:90vh;overflow-y:auto}
 .modal-body{padding:1.5rem}
 .ingredient-row{display:grid;grid-template-columns:1fr 80px 90px auto;gap:8px;align-items:center;margin-bottom:8px}
+.banner{border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.banner-info{background:var(--info-bg);border:1px solid #b5cff5}
+.banner-ok{background:var(--accent-light);border:1px solid #a8d4a2}
 </style>
 </head>
 <body>
@@ -82,7 +85,7 @@ td{padding:10px 12px;vertical-align:middle}
         <div><label>Nombre</label><input type="text" id="mp-nombre"></div>
         <div><label>Precio total (€)</label><input type="number" id="mp-precio" step="0.01"></div>
         <div><label>Cantidad</label><input type="number" id="mp-cantidad" step="any"></div>
-        <div><label>Unidad</label><select id="mp-unidad"><option value="kg">kg</option><option value="g">g</option><option value="L">litro</option><option value="mL">mL</option><option value="ud">unidad</option></select></div>
+        <div><label>Unidad</label><select id="mp-unidad"><option value="kg">kg</option><option value="g">g</option><option value="L">L</option><option value="mL">mL</option><option value="ud">ud</option></select></div>
       </div>
       <button class="btn btn-primary" onclick="addMateria()" style="margin-top:10px">+ Añadir</button>
     </div>
@@ -94,6 +97,13 @@ td{padding:10px 12px;vertical-align:middle}
 
 <section id="sec-facturas" class="section">
   <h2>Lector de facturas</h2>
+  
+  <div id="api-banner" class="banner banner-info">
+    <span style="font-size:16px">🔑</span>
+    <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--info)">API key requerida</div></div>
+    <button class="btn btn-info btn-sm" onclick="showSection('config',document.querySelectorAll('.nav-btn')[4])">Configurar</button>
+  </div>
+
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-pdf" onclick="switchTab('pdf')">Subir factura</button>
     <button class="tab-btn" id="tab-text" onclick="switchTab('text')">Entrada rápida</button>
@@ -104,9 +114,9 @@ td{padding:10px 12px;vertical-align:middle}
       <div class="card-body">
         <div class="drop-zone" onclick="document.getElementById('file-input').click()">
           <div style="font-size:30px">🧾</div>
-          <div>Haz clic o arrastra facturas aquí</div>
+          <div>Haz clic para seleccionar facturas (PDF/Imagen)</div>
         </div>
-        <input type="file" id="file-input" multiple style="display:none" onchange="handleFiles(event)">
+        <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" onchange="handleFiles(event)">
         <div id="invoice-status" style="margin-top:10px;display:none">
           <div style="display:flex;align-items:center;gap:10px"><div class="spinner"></div><span id="inv-status-text">Analizando...</span></div>
           <div id="inv-files-progress" style="margin-top:10px"></div>
@@ -132,19 +142,43 @@ td{padding:10px 12px;vertical-align:middle}
   </div>
 </section>
 
+<section id="sec-articulos" class="section">
+  <h2>Artículos de la cafetería</h2>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+    <button class="btn btn-primary" onclick="openArticuloModal()">+ Nuevo artículo</button>
+  </div>
+  <div class="card">
+    <div id="art-table-wrap" class="card-body">Cargando artículos...</div>
+  </div>
+</section>
+
+<section id="sec-dashboard" class="section">
+  <h2>Dashboard de rentabilidad</h2>
+  <div class="card" style="margin-bottom:1.5rem;padding:1.25rem">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <label style="text-transform:none;font-size:14px;font-weight:500;color:var(--text);margin:0">Margen objetivo:</label>
+      <input type="range" id="margen-slider" min="10" max="80" value="65" step="5" style="width:180px" oninput="updateMargen()">
+      <span id="margen-val" style="font-size:18px;font-weight:600">65%</span>
+    </div>
+  </div>
+  <div class="card">
+    <div id="dash-table-wrap" class="card-body">Cargando datos...</div>
+  </div>
+</section>
+
 <section id="sec-config" class="section">
   <h2>Configuración</h2>
   <div class="card" style="margin-bottom:1rem">
     <div class="card-body">
-      <label>Gemini API Key (AIzaSy...)</label>
+      <label>Gemini API Key</label>
       <div style="display:flex;gap:8px">
-        <input type="password" id="api-key-input" placeholder="Pega tu clave aquí">
+        <input type="password" id="api-key-input" placeholder="AIzaSy...">
         <button class="btn btn-primary" onclick="saveApiKey()">Guardar</button>
       </div>
       <div id="api-key-status" style="margin-top:10px;font-size:12px"></div>
     </div>
   </div>
-  <div class="card">
+  <div class="card" style="margin-bottom:1rem">
     <div class="card-body">
       <label>URL Apps Script (Google Sheets)</label>
       <div style="display:flex;gap:8px">
@@ -154,136 +188,403 @@ td{padding:10px 12px;vertical-align:middle}
       <div id="script-url-status" style="margin-top:10px;font-size:12px"></div>
     </div>
   </div>
+  <div class="card">
+    <div class="card-body" style="display:flex;gap:8px">
+      <button class="btn" onclick="exportData()">Exportar JSON</button>
+      <button class="btn" onclick="document.getElementById('import-file').click()">Importar JSON</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      <button class="btn btn-danger" onclick="clearData()">Borrar Datos</button>
+    </div>
+  </div>
 </section>
 
 </main>
+
+<div class="modal-overlay" id="modal-overlay" style="display:none" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-body">
+      <div class="form-row" style="grid-template-columns:1fr 1fr; margin-bottom:15px">
+        <div><label>Nombre</label><input type="text" id="art-nombre"></div>
+        <div><label>Precio venta (€)</label><input type="number" id="art-precio-venta" step="0.01"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <strong>Ingredientes</strong>
+        <button class="btn btn-sm" onclick="addIngredientRow()">+ Añadir</button>
+      </div>
+      <div id="ingredientes-container"></div>
+      <div id="coste-preview" style="margin-top:15px;font-weight:bold;color:var(--accent)"></div>
+      <div style="margin-top:20px;text-align:right">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveArticulo()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-var DB={materias:[],articulos:[]};
-var invoiceItems=[];
+var DB = {materias:[], articulos:[]};
+var invoiceItems = [];
+var editingId = null;
+var syncTimer = null;
 
-function loadLocal(){try{var s=localStorage.getItem('cafeteria_db_v3');if(s)DB=JSON.parse(s);}catch(e){}}
-function saveLocal(){localStorage.setItem('cafeteria_db_v3',JSON.stringify(DB));}
-function getApiKey(){return localStorage.getItem('cafeteria_api_key')||'';}
-function getScriptUrl(){return localStorage.getItem('cafeteria_script_url')||'';}
-function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+function loadLocal() { try{ var s = localStorage.getItem('cafeteria_db_v3'); if(s) DB = JSON.parse(s); }catch(e){} }
+function saveLocal() { localStorage.setItem('cafeteria_db_v3', JSON.stringify(DB)); scheduleSync(); }
+function getApiKey() { return localStorage.getItem('cafeteria_api_key')||''; }
+function getScriptUrl() { return localStorage.getItem('cafeteria_script_url')||''; }
+function toast(msg) { var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),4000); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substring(2); }
 
-function saveApiKey(){
-  var v=document.getElementById('api-key-input').value.trim();
-  if(!v.startsWith('AIza'))return toast('La clave debe empezar por AIzaSy...');
+function saveApiKey() {
+  var v = document.getElementById('api-key-input').value.trim();
+  if(!v.startsWith('AIza')) return toast('La clave de Gemini debe empezar por AIzaSy...');
   localStorage.setItem('cafeteria_api_key',v);
-  loadApiKeyStatus();
-  toast('Clave guardada ✓');
+  loadApiKeyStatus(); checkApiBanner(); toast('API Key guardada ✓');
 }
 
-function loadApiKeyStatus(){
-  var k=getApiKey();
-  var el=document.getElementById('api-key-status');
-  if(k) el.innerHTML='<span style="color:var(--accent)">✓ Configurada correctamente</span>';
+function loadApiKeyStatus() {
+  var k = getApiKey();
+  var el = document.getElementById('api-key-status');
+  if(k) { el.innerHTML = '<span style="color:var(--accent)">✓ Configurada</span> <button class="btn btn-sm btn-danger" onclick="removeApiKey()">Borrar</button>'; }
+  else { el.innerHTML = ''; }
 }
 
-// --- LÓGICA DE IA (GEMINI) ---
-var PROMPT_SISTEMA = `Eres un experto en facturas para cafeterías. 
-INSTRUCCIONES:
-1. NOMBRES HUMANOS: Traduce códigos raros a nombres de barra. Ej: "05 CABRAS" -> "Agua 500ml", "C-65 CROIS" -> "Croissant".
-2. UNIDAD DE COMPRA: El 'precio_total' es el precio de la bolsa o caja entera (SIN IVA).
-3. CANTIDAD INTERNA: En 'cantidad', pon cuántas unidades o litros hay DENTRO de esa bolsa/caja.
-   Ej: "Bolsa croissant 20ud a 6€" -> nombre:"Croissant", precio_total:6, cantidad:20, unidad:"ud".
-Responde SOLO con este JSON:
-{"fecha":"YYYY-MM-DD","productos":[{"nombre":"string","cantidad":number,"unidad":"kg|g|L|mL|ud","precio_total":number,"detalle":"string"}]}`;
+function removeApiKey() { localStorage.removeItem('cafeteria_api_key'); loadApiKeyStatus(); checkApiBanner(); toast('Clave borrada'); }
+function checkApiBanner() {
+  var b = document.getElementById('api-banner');
+  if(getApiKey()) { b.className='banner banner-ok'; b.innerHTML='<span>✓</span><div style="flex:1;font-size:13px;font-weight:500;color:var(--accent-text)">Lector Gemini activo.</div>'; }
+  else { b.className='banner banner-info'; b.innerHTML='<span>🔑</span><div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--info)">API key requerida</div></div><button class="btn btn-info btn-sm" onclick="showSection(\'config\')">Configurar</button>'; }
+}
+
+function switchTab(tab) {
+  document.getElementById('tab-content-pdf').style.display = tab==='pdf' ? 'block' : 'none';
+  document.getElementById('tab-content-text').style.display = tab==='text' ? 'block' : 'none';
+  document.getElementById('tab-pdf').classList.toggle('active', tab==='pdf');
+  document.getElementById('tab-text').classList.toggle('active', tab==='text');
+}
+
+function showSection(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  if(btn) { document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+  if(name==='materias') renderMaterias();
+  if(name==='articulos') renderArticulos();
+  if(name==='dashboard') renderDashboard();
+}
+
+// ==========================================
+// LÓGICA DE IA (GEMINI) - A PRUEBA DE FALLOS
+// ==========================================
+var PROMPT_SISTEMA = `Eres un experto extrayendo datos de facturas de hostelería.
+INSTRUCCIONES CRÍTICAS:
+1. TRADUCE LOS NOMBRES: Si el producto dice "05 CABRAS", pon "Agua 500ml". Nombres lógicos que un humano entienda.
+2. PRECIO DE LA CAJA/BOLSA: El 'precio_total' es el precio de la unidad comprada entera, SIN IVA.
+3. CANTIDADES: En 'cantidad', especifica cuántas unidades o litros exactos vienen DENTRO del formato.
+   Ejemplo 1: "Bolsa croissant 20 unidades 6 euros" -> nombre:"Croissant", precio_total:6, cantidad:20, unidad:"ud", detalle:"bolsa 20ud".
+   Ejemplo 2: "Caja 6 botellas leche 1L 5.50 euros" -> nombre:"Leche 1L", precio_total:5.50, cantidad:6, unidad:"L", detalle:"caja 6 bot".
+4. ESTRUCTURA ESTRICTA: Tu respuesta DEBE ser ÚNICAMENTE un objeto JSON válido, sin texto antes ni después.
+
+Devuelve este JSON exacto:
+{"fecha":"YYYY-MM-DD", "productos":[{"nombre":"string","cantidad":number,"unidad":"kg|g|L|mL|ud","precio_total":number,"detalle":"string"}]}`;
 
 async function analyzeSingleFile(file, key) {
   const base64 = await new Promise((res) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result.split(',')[1]);
-    r.readAsDataURL(file);
+    const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(file);
   });
 
-  // USAMOS v1beta PARA ASEGURAR COMPATIBILIDAD CON JSON MODE
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
   
+  // ELIMINADO EL generationConfig PARA EVITAR EL ERROR DE GOOGLE
   const payload = {
-    contents: [{ parts: [{ text: PROMPT_SISTEMA }, { inline_data: { mime_type: file.type || "application/pdf", data: base64 } }] }],
-    generationConfig: { response_mime_type: "application/json" }
+    contents: [{ parts: [{ text: PROMPT_SISTEMA }, { inline_data: { mime_type: file.type || "application/pdf", data: base64 } }] }]
   };
 
   const resp = await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
   const d = await resp.json();
 
-  if (!resp.ok) throw new Error(d.error?.message || "Error en Gemini");
-  if (!d.candidates || d.candidates.length === 0) throw new Error("La IA no devolvió resultados.");
+  if (!resp.ok) throw new Error(d.error?.message || "Error al conectar con Google");
+  if (!d.candidates || d.candidates.length === 0) throw new Error("La IA no devolvió datos legibles.");
 
-  return JSON.parse(d.candidates[0].content.parts[0].text);
+  // EXTRAER Y LIMPIAR EL JSON MANUALMENTE
+  let rawText = d.candidates[0].content.parts[0].text;
+  let cleanText = rawText.replace(/```json|```/g, '').trim();
+  let start = cleanText.indexOf('{');
+  let end = cleanText.lastIndexOf('}');
+  
+  if (start === -1 || end === -1) throw new Error("La respuesta de la IA no tiene el formato correcto.");
+  
+  return JSON.parse(cleanText.slice(start, end + 1));
 }
 
 async function handleFiles(e) {
-  var key = getApiKey(); if(!key) return toast('Pon la API Key en configuración');
-  var files = Array.from(e.target.files);
+  var key = getApiKey(); if(!key) return toast('Configura la clave de Gemini primero');
+  var files = Array.from(e.target.files).slice(0, 5);
   var status = document.getElementById('invoice-status');
+  var progress = document.getElementById('inv-files-progress');
+  
   status.style.display = 'block';
+  document.getElementById('invoice-results').style.display = 'none';
   invoiceItems = [];
+  
+  progress.innerHTML = files.map((f,i)=> `<div id="fstat-${i}" style="font-size:12px; margin-bottom:5px">⏳ ${f.name}</div>`).join('');
 
-  for (let file of files) {
+  for (let i=0; i<files.length; i++) {
     try {
-      let res = await analyzeSingleFile(file, key);
-      res.productos.forEach(p => {
-        p._id = Math.random().toString(36).substr(2,9);
-        p._selected = true;
-        p._fecha = res.fecha;
-        invoiceItems.push(p);
-      });
+      let res = await analyzeSingleFile(files[i], key);
+      if(res && res.productos) {
+        res.productos.forEach(p => invoiceItems.push({...p, _id: genId(), _selected: true, _fecha: res.fecha}));
+        document.getElementById(`fstat-${i}`).innerHTML = `✅ ${files[i].name}: ${res.productos.length} prod.`;
+      }
     } catch (err) {
-      toast('Error con ' + file.name + ': ' + err.message);
+      document.getElementById(`fstat-${i}`).innerHTML = `❌ ${files[i].name}: Error`;
+      toast('Error: ' + err.message);
     }
   }
-  status.style.display = 'none';
-  renderResults();
+  
+  setTimeout(() => {
+    status.style.display = 'none';
+    if(invoiceItems.length > 0) renderResults();
+  }, 1000);
+}
+
+async function processQuickText() {
+  var key = getApiKey(); if(!key) return toast('Configura la clave de Gemini primero');
+  var text = document.getElementById('quick-text').value.trim();
+  if(!text) return toast('Escribe los productos');
+  
+  document.getElementById('qt-spinner').style.display = 'flex';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  const payload = { contents: [{ parts: [{ text: PROMPT_SISTEMA + "\n\nTEXTO DEL USUARIO:\n" + text }] }] };
+
+  try {
+    const resp = await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.error?.message || "Error al conectar con Google");
+    
+    let rawText = d.candidates[0].content.parts[0].text;
+    let cleanText = rawText.replace(/```json|```/g, '').trim();
+    let start = cleanText.indexOf('{');
+    let end = cleanText.lastIndexOf('}');
+    
+    let res = JSON.parse(cleanText.slice(start, end + 1));
+    invoiceItems = res.productos.map(p => ({...p, _id: genId(), _selected: true, _fecha: res.fecha}));
+    
+    document.getElementById('qt-spinner').style.display = 'none';
+    renderResults();
+  } catch (err) {
+    document.getElementById('qt-spinner').style.display = 'none';
+    toast('Error: ' + err.message);
+  }
 }
 
 function renderResults() {
   var list = document.getElementById('invoice-items-list');
   document.getElementById('invoice-results').style.display = 'block';
-  list.innerHTML = invoiceItems.map(item => `
-    <div class="invoice-item selected">
-      <div><strong>${item.nombre}</strong> <small>${item.detalle || ''}</small></div>
-      <input type="number" value="${item.cantidad}" style="width:60px">
-      <span>${item.unidad}</span>
-      <input type="number" value="${item.precio_total}" step="0.01" style="width:70px">
-    </div>
-  `).join('');
+  
+  list.innerHTML = invoiceItems.map(item => {
+    var uopts = ['kg','g','L','mL','ud'].map(u => `<option ${u===item.unidad?'selected':''}>${u}</option>`).join('');
+    return `
+    <div class="invoice-item selected" id="iitem_${item._id}">
+      <div><strong>${item.nombre}</strong> <small style="color:var(--text3);display:block">${item.detalle||''}</small></div>
+      <input type="number" value="${item.cantidad}" onchange="updateInv('${item._id}','cantidad',parseFloat(this.value))">
+      <select onchange="updateInv('${item._id}','unidad',this.value)">${uopts}</select>
+      <input type="number" value="${item.precio_total}" step="0.01" onchange="updateInv('${item._id}','precio_total',parseFloat(this.value))">
+      <input type="checkbox" checked onchange="toggleInv('${item._id}',this.checked)">
+    </div>`;
+  }).join('');
 }
 
-// --- FUNCIONES DE NAVEGACIÓN Y MATERIAS ---
-function showSection(name, btn) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById('sec-' + name).classList.add('active');
-  if(btn) {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-  if(name==='materias') renderMaterias();
+function updateInv(id, field, val) { let i = invoiceItems.find(x => x._id === id); if(i) i[field] = val; }
+function toggleInv(id, checked) { let i = invoiceItems.find(x => x._id === id); if(i) { i._selected = checked; document.getElementById('iitem_'+id).classList.toggle('selected', checked); } }
+
+function importSelected() {
+  var sel = invoiceItems.filter(i => i._selected);
+  if(!sel.length) return toast('No hay productos seleccionados');
+  sel.forEach(item => {
+    var ex = DB.materias.find(m => m.nombre.toLowerCase() === item.nombre.toLowerCase());
+    if(ex) {
+      ex.precio = item.precio_total; ex.cantidad = item.cantidad; ex.unidad = item.unidad;
+    } else {
+      DB.materias.push({ id: genId(), nombre: item.nombre, precio: item.precio_total, cantidad: item.cantidad, unidad: item.unidad });
+    }
+  });
+  saveLocal();
+  document.getElementById('invoice-results').style.display = 'none';
+  invoiceItems = [];
+  toast('Productos importados ✓');
+  showSection('materias');
 }
 
+// ==========================================
+// RESTO DEL SISTEMA (MATERIAS, ARTÍCULOS)
+// ==========================================
 function renderMaterias() {
   var wrap = document.getElementById('mp-table-wrap');
-  if(!DB.materias.length) { wrap.innerHTML = "Sin ingredientes."; return; }
-  var rows = DB.materias.map(m => `<tr><td>${m.nombre}</td><td>${m.precio}€</td><td>${m.cantidad}${m.unidad}</td><td style="color:var(--accent)">${(m.precio/m.cantidad).toFixed(2)}€/un</td></tr>`).join('');
-  wrap.innerHTML = `<table><thead><tr><th>Nombre</th><th>Precio</th><th>Cant.</th><th>Coste</th></tr></thead><tbody>${rows}</tbody></table>`;
+  if(!DB.materias.length) { wrap.innerHTML = '<div class="empty-state">Sin ingredientes.</div>'; return; }
+  var rows = DB.materias.map(m => `<tr><td><strong>${m.nombre}</strong></td><td>${m.precio}€</td><td>${m.cantidad}${m.unidad}</td><td style="color:var(--accent);font-weight:bold">${(m.precio/m.cantidad).toFixed(3)}€/${m.unidad}</td><td><button class="btn btn-sm btn-danger" onclick="deleteMateria('${m.id}')">X</button></td></tr>`).join('');
+  wrap.innerHTML = `<table><thead><tr><th>Nombre</th><th>Precio Total</th><th>Cantidad</th><th>Coste Unitario</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function addMateria() {
-  var n = document.getElementById('mp-nombre').value;
+  var n = document.getElementById('mp-nombre').value.trim();
   var p = parseFloat(document.getElementById('mp-precio').value);
   var c = parseFloat(document.getElementById('mp-cantidad').value);
   var u = document.getElementById('mp-unidad').value;
   if(!n || !p || !c) return toast('Faltan datos');
-  DB.materias.push({nombre:n, precio:p, cantidad:c, unidad:u});
+  DB.materias.push({ id: genId(), nombre: n, precio: p, cantidad: c, unidad: u });
+  document.getElementById('mp-nombre').value=''; document.getElementById('mp-precio').value=''; document.getElementById('mp-cantidad').value='';
   saveLocal(); renderMaterias(); toast('Añadido ✓');
 }
 
-// Inicialización
-loadLocal(); loadApiKeyStatus(); renderMaterias();
+function deleteMateria(id) { if(confirm('¿Eliminar?')) { DB.materias = DB.materias.filter(m => m.id !== id); saveLocal(); renderMaterias(); } }
+
+function openArticuloModal(id) {
+  editingId = id || null;
+  document.getElementById('art-nombre').value = '';
+  document.getElementById('art-precio-venta').value = '';
+  document.getElementById('ingredientes-container').innerHTML = '';
+  if(id) {
+    var art = DB.articulos.find(a => a.id === id);
+    document.getElementById('art-nombre').value = art.nombre;
+    document.getElementById('art-precio-venta').value = art.precioVenta || '';
+    (art.ingredientes||[]).forEach(ing => addIngredientRow(ing));
+  } else { addIngredientRow(); }
+  document.getElementById('modal-overlay').style.display = 'flex';
+  updateCostePreview();
+}
+
+function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+function closeModalOutside(e) { if(e.target.id === 'modal-overlay') closeModal(); }
+
+function addIngredientRow(data) {
+  var c = document.getElementById('ingredientes-container');
+  var opts = DB.materias.map(m => `<option value="${m.id}" ${data&&data.materiaId===m.id?'selected':''}>${m.nombre}</option>`).join('');
+  var div = document.createElement('div'); div.className = 'ingredient-row';
+  div.innerHTML = `<select onchange="updateCostePreview()"><option value="">Selecciona...</option>${opts}</select>
+  <input type="number" value="${data?data.cantidad:''}" oninput="updateCostePreview()">
+  <select onchange="updateCostePreview()">` + ['g','mL','ud','kg','L'].map(u=>`<option ${data&&data.unidad===u?'selected':''}>${u}</option>`).join('') + `</select>
+  <button class="btn btn-sm btn-danger" onclick="this.parentElement.remove();updateCostePreview()">X</button>`;
+  c.appendChild(div);
+}
+
+function calcCoste(ings) {
+  var t = 0;
+  (ings||[]).forEach(ing => {
+    var mp = DB.materias.find(m => m.id === ing.materiaId); if(!mp) return;
+    var unitario = mp.precio / mp.cantidad;
+    var mult = 1;
+    if(ing.unidad==='g' && mp.unidad==='kg') mult = 0.001;
+    if(ing.unidad==='mL' && mp.unidad==='L') mult = 0.001;
+    t += (ing.cantidad * mult) * unitario;
+  });
+  return t;
+}
+
+function updateCostePreview() {
+  var ings = [];
+  document.querySelectorAll('#ingredientes-container .ingredient-row').forEach(r => {
+    var mid = r.querySelector('select').value;
+    var qty = parseFloat(r.querySelector('input').value);
+    var u = r.querySelectorAll('select')[1].value;
+    if(mid && qty > 0) ings.push({materiaId: mid, cantidad: qty, unidad: u});
+  });
+  document.getElementById('coste-preview').innerText = 'Coste Base: ' + calcCoste(ings).toFixed(2) + ' €';
+}
+
+function saveArticulo() {
+  var n = document.getElementById('art-nombre').value.trim();
+  var pv = parseFloat(document.getElementById('art-precio-venta').value);
+  if(!n) return toast('Ponle nombre al artículo');
+  
+  var ings = [];
+  document.querySelectorAll('#ingredientes-container .ingredient-row').forEach(r => {
+    var mid = r.querySelector('select').value;
+    var qty = parseFloat(r.querySelector('input').value);
+    var u = r.querySelectorAll('select')[1].value;
+    if(mid && qty > 0) ings.push({materiaId: mid, cantidad: qty, unidad: u});
+  });
+
+  if(editingId) {
+    var idx = DB.articulos.findIndex(a => a.id === editingId);
+    DB.articulos[idx] = { ...DB.articulos[idx], nombre: n, precioVenta: pv, ingredientes: ings };
+  } else {
+    DB.articulos.push({ id: genId(), nombre: n, precioVenta: pv, ingredientes: ings });
+  }
+  
+  saveLocal(); closeModal(); renderArticulos();
+}
+
+function renderArticulos() {
+  var wrap = document.getElementById('art-table-wrap');
+  if(!DB.articulos.length) { wrap.innerHTML = '<div class="empty-state">Sin artículos.</div>'; return; }
+  
+  var rows = DB.articulos.map(a => {
+    var c = calcCoste(a.ingredientes);
+    var m = a.precioVenta ? ((a.precioVenta - c) / a.precioVenta * 100).toFixed(0) + '%' : '—';
+    return `<tr><td><strong>${a.nombre}</strong></td><td>${c.toFixed(2)}€</td><td>${a.precioVenta?a.precioVenta.toFixed(2)+'€':'—'}</td><td>${m}</td><td><button class="btn btn-sm" onclick="openArticuloModal('${a.id}')">✏️</button></td></tr>`;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th>Artículo</th><th>Coste</th><th>Venta</th><th>Margen</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderDashboard() {
+  var obj = document.getElementById('margen-slider').value;
+  var wrap = document.getElementById('dash-table-wrap');
+  if(!DB.articulos.length) { wrap.innerHTML = '<div class="empty-state">Añade artículos.</div>'; return; }
+  
+  var rows = DB.articulos.map(a => {
+    var c = calcCoste(a.ingredientes);
+    var sug = c / (1 - (obj/100));
+    return `<tr><td><strong>${a.nombre}</strong></td><td>${c.toFixed(2)}€</td><td style="color:var(--accent);font-weight:bold">${sug.toFixed(2)}€</td><td>${a.precioVenta?a.precioVenta.toFixed(2)+'€':'—'}</td></tr>`;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th>Artículo</th><th>Coste Fijo</th><th>Precio Sugerido (${obj}%)</th><th>Precio Actual</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function updateMargen() { document.getElementById('margen-val').innerText = document.getElementById('margen-slider').value + '%'; renderDashboard(); }
+
+// ==========================================
+// GOOGLE SHEETS Y BACKUP
+// ==========================================
+function setSyncStatus(state, text) {
+  document.getElementById('sync-dot').className = 'sync-dot ' + state;
+  document.getElementById('sync-text').innerText = text;
+}
+function scheduleSync() {
+  if(!getScriptUrl()) return;
+  clearTimeout(syncTimer); setSyncStatus('syncing', 'Guardando...');
+  syncTimer = setTimeout(syncToCloud, 2000);
+}
+async function syncToCloud() {
+  var url = getScriptUrl(); if(!url) return;
+  try {
+    await fetch(url + '?action=syncAll', { method: 'POST', body: JSON.stringify(DB), redirect: 'follow' });
+    setSyncStatus('ok', 'Guardado en la nube');
+  } catch(e) { setSyncStatus('error', 'Error nube'); }
+}
+async function connectScript() {
+  var u = document.getElementById('script-url-input').value.trim(); if(!u) return;
+  localStorage.setItem('cafeteria_script_url', u);
+  document.getElementById('script-url-status').innerText = 'Conectado ✓';
+  syncToCloud();
+}
+function exportData() {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(DB, null, 2)], {type: 'application/json'}));
+  a.download = 'cafeteria.json'; a.click();
+}
+function importData(e) {
+  var r = new FileReader();
+  r.onload = () => { DB = JSON.parse(r.result); saveLocal(); renderMaterias(); renderArticulos(); };
+  r.readAsText(e.target.files[0]);
+}
+function clearData() { if(confirm('¿Borrar TODO?')) { DB={materias:[],articulos:[]}; saveLocal(); location.reload(); } }
+
+// Inicio
+loadLocal();
+loadApiKeyStatus();
+checkApiBanner();
+renderMaterias();
+if(getScriptUrl()) { document.getElementById('script-url-status').innerText = 'Conectado ✓'; }
 </script>
 </body>
 </html>
