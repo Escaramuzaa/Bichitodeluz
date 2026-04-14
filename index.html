@@ -305,14 +305,14 @@ function setSyncStatus(state,text){document.getElementById('sync-dot').className
 async function syncToCloud(silent){
   var url=getScriptUrl();if(!url){if(!silent)toast('Configura la URL del script primero');return;}
   setSyncStatus('syncing','Guardando\u2026');
-  try{var resp=await fetch(url+'?action=syncAll',{method:'POST',body:JSON.stringify(DB)});var data=await resp.json();if(data.error)throw new Error(data.error);var now=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});setSyncStatus('ok','Guardado '+now);if(!silent)toast('Sincronizado \u2713');}
+  try{var resp=await fetch(url+'?action=syncAll',{method:'POST',body:JSON.stringify(DB),redirect:'follow'});var data=await resp.json();if(data.error)throw new Error(data.error);var now=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});setSyncStatus('ok','Guardado '+now);if(!silent)toast('Sincronizado \u2713');}
   catch(err){setSyncStatus('error','Error al guardar');if(!silent)toast('Error: '+err.message,5000);}
 }
 
 async function loadFromCloud(){
   var url=getScriptUrl();if(!url)return toast('Configura la URL del script primero');
   setSyncStatus('syncing','Cargando\u2026');
-  try{var resp=await fetch(url+'?action=getAll');var data=await resp.json();if(data.error)throw new Error(data.error);
+  try{var resp=await fetch(url+'?action=getAll',{redirect:'follow'});var data=await resp.json();if(data.error)throw new Error(data.error);
     DB.materias=data.materias||[];
     DB.articulos=(data.articulos||[]).map(function(a){if(typeof a.ingredientes==='string'){try{a.ingredientes=JSON.parse(a.ingredientes);}catch(e){a.ingredientes=[];}}return a;});
     saveLocal();renderMaterias();renderArticulos();var now=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});setSyncStatus('ok','Actualizado '+now);toast('Datos cargados \u2713');}
@@ -324,7 +324,7 @@ async function connectScript(){
   if(!url)return toast('Introduce la URL del script');
   if(!url.includes('script.google.com'))return toast('La URL no parece correcta');
   setSyncStatus('syncing','Verificando\u2026');
-  try{var resp=await fetch(url+'?action=ping');var data=await resp.json();if(data.error)throw new Error(data.error);
+  try{var resp=await fetch(url+'?action=ping',{redirect:'follow'});var data=await resp.json();if(data.error)throw new Error(data.error);
     localStorage.setItem('cafeteria_script_url',url);loadScriptUrlStatus();setSyncStatus('ok','Conectado');
     toast('Conectado \u2713');setTimeout(function(){syncToCloud(false);},500);}
   catch(err){setSyncStatus('error','Error');toast('No se pudo conectar: '+err.message,5000);}
