@@ -64,7 +64,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .main{overflow-x:hidden;min-width:0}
 @media(max-width:768px){.main{padding-bottom:70px}}
 
-.page{display:none;padding:2rem;max-width:1100px;animation:fadeIn .2s ease}
+.page{display:none;padding:2rem;max-width:1100px;margin:0 auto;animation:fadeIn .2s ease}
 .page.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media(max-width:768px){.page{padding:1rem}}
@@ -157,8 +157,8 @@ select option{background:var(--surface2)}
 /* ── INVOICE ITEMS ── */
 .inv-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;transition:border-color .15s}
 .inv-item.selected{border-color:var(--accent);background:var(--accent-light)}
-.inv-item-grid{display:grid;grid-template-columns:1fr 70px 80px 95px 85px 28px;gap:8px;align-items:center}
-@media(max-width:600px){.inv-item-grid{grid-template-columns:1fr 60px 70px 80px 28px}}
+.inv-item-grid{display:grid;grid-template-columns:1fr 110px 70px 95px 100px 28px;gap:8px;align-items:center}
+@media(max-width:600px){.inv-item-grid{grid-template-columns:1fr 90px 60px 80px 28px}}
 
 /* ── PROGRESS ── */
 .progress-wrap{height:3px;background:var(--surface3);border-radius:2px;overflow:hidden;margin-top:6px}
@@ -353,8 +353,8 @@ select option{background:var(--surface2)}
       </div>
       <div class="card-body">
         <div id="price-changes-alert" style="display:none" class="banner banner-warn"></div>
-        <div style="display:grid;grid-template-columns:1fr 70px 80px 95px 85px 28px;gap:8px;padding:0 4px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">
-          <span>Producto</span><span>Cant.</span><span>Unidad</span><span>€ caja</span><span>€/ud</span><span></span>
+        <div style="display:grid;grid-template-columns:1fr 110px 70px 95px 100px 28px;gap:8px;padding:0 4px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">
+          <span>Producto</span><span>Contenido/ud</span><span>Cant.</span><span>€ caja</span><span>€/unidad</span><span></span>
         </div>
         <div id="invoice-items-list"></div>
         <div id="invoice-note" style="font-size:12px;color:var(--text3);margin-top:8px"></div>
@@ -708,33 +708,59 @@ function renderInvoiceResults(){
   list.innerHTML=invoiceItems.map(function(item){
     var bc=item.confianza==='alta'?'badge-green':item.confianza==='media'?'badge-amber':'badge-neutral';
     var ct='';if(item._pct>0)ct='<span class="badge badge-amber" style="font-size:10px;margin-left:4px">\u2B06 +'+item._pct+'%</span>';else if(item._pct<0)ct='<span class="badge badge-green" style="font-size:10px;margin-left:4px">\u2B07 '+item._pct+'%</span>';
-    var medidaTag=(item.medida_unitaria&&item.unidad_medida)?'<span style="font-size:10px;color:var(--text3);margin-left:4px">'+item.medida_unitaria+item.unidad_medida+'/ud</span>':'';
     var src=item._source?'<span style="font-size:10px;color:var(--text3);margin-left:4px">\u2014 '+item._source+'</span>':'';
-    var pc=item.precio_caja||0;var cant=item.cantidad||1;
-    var cu=cant>0?(pc/cant).toFixed(4).replace(/\.?0+$/,''):'—';
+    var pc=item.precio_caja||0;
+    var cant=item.cantidad||1;
     var eid='ii_'+item._id.replace(/[^a-z0-9]/gi,'_');
-    var uopts=['kg','g','L','mL','ud','docena'].map(function(u){return '<option'+(u===item.unidad?' selected':'')+'>'+u+'</option>';}).join('');
+
+    // Columna 1: contenido por unidad (medida_unitaria + unidad_medida), editable
+    // Si hay medida_unitaria (ej: 700) y unidad_medida (ej: mL), se muestra "700 mL"
+    // El coste unitario real = precio_caja / (cant * medida_unitaria) por unidad_medida
+    var medVal=item.medida_unitaria||'';
+    var medUnit=item.unidad_medida||item.unidad||'ud';
+    var uoptsContenido=['kg','g','L','mL','ud','docena'].map(function(u){return '<option'+(u===medUnit?' selected':'')+'>'+u+'</option>';}).join('');
+
+    // Coste unitario: si hay medida_unitaria → €/unidad_medida; si no → €/unidad
+    var cu='—';
+    if(medVal&&parseFloat(medVal)>0){
+      // €/unidad_medida (ej: €/mL, €/g)
+      var totalUnidades=cant*parseFloat(medVal);
+      cu=(pc/totalUnidades).toFixed(4).replace(/\.?0+$/,'')+'\u00a0\u20ac/'+medUnit;
+    } else {
+      // sin medida, coste por unidad simple
+      cu=cant>0?(pc/cant).toFixed(4).replace(/\.?0+$/,'')+'\u00a0\u20ac/'+item.unidad:'—';
+    }
+
     return '<div class="inv-item '+(item._selected?'selected':'')+'" id="'+eid+'">'
       +'<div class="inv-item-grid">'
+      // Col 1: Nombre + badges
       +'<div><input type="text" value="'+item.nombre+'" onchange="updateInv(\''+eid+'\',\'nombre\',this.value)" style="width:100%;border:none;background:transparent;padding:0;font-weight:500;color:var(--text);font-family:var(--font)">'
-      +'<div style="margin-top:3px"><span class="badge '+bc+'" style="font-size:10px">'+item.confianza+'</span>'+ct+medidaTag+(item.detalle?'<span style="font-size:10px;color:var(--text3);margin-left:4px">'+item.detalle+'</span>':'')+src+'</div></div>'
-      +'<input type="number" value="'+cant+'" min="0.001" step="any" onchange="updateInv(\''+eid+'\',\'cantidad\',parseFloat(this.value));recalcCU(\''+eid+'\')" style="text-align:right;background:var(--surface2)">'
-      +'<select onchange="updateInv(\''+eid+'\',\'unidad\',this.value)" style="background:var(--surface2)">'+uopts+'</select>'
+      +'<div style="margin-top:3px"><span class="badge '+bc+'" style="font-size:10px">'+item.confianza+'</span>'+ct+(item.detalle?'<span style="font-size:10px;color:var(--text3);margin-left:4px">'+item.detalle+'</span>':'')+src+'</div></div>'
+      // Col 2: Contenido por unidad (ej: 700 mL) — dos inputs juntos
+      +'<div style="display:flex;gap:3px;align-items:center">'
+      +'<input type="number" value="'+(medVal||'')+'" min="0" step="any" placeholder="—" title="Contenido por unidad" onchange="updateInv(\''+eid+'\',\'medida_unitaria\',parseFloat(this.value)||null);recalcCU(\''+eid+'\')" style="width:52px;text-align:right;background:var(--surface2);padding:5px 6px">'
+      +'<select title="Unidad de medida del contenido" onchange="updateInv(\''+eid+'\',\'unidad_medida\',this.value);updateInv(\''+eid+'\',\'unidad\',this.value);recalcCU(\''+eid+'\')" style="background:var(--surface2);padding:5px 4px;flex:1">'+uoptsContenido+'</select>'
+      +'</div>'
+      // Col 3: Cantidad de unidades en la caja
+      +'<input type="number" value="'+cant+'" min="0.001" step="any" title="Nº de unidades en la caja" onchange="updateInv(\''+eid+'\',\'cantidad\',parseFloat(this.value));recalcCU(\''+eid+'\')" style="text-align:right;background:var(--surface2)">'
+      // Col 4: Precio caja
       +'<input type="number" value="'+pc.toFixed(4)+'" min="0" step="0.0001" onchange="updateInv(\''+eid+'\',\'precio_caja\',parseFloat(this.value));recalcCU(\''+eid+'\')" style="text-align:right;background:var(--surface2)">'
-      +'<span id="cu_'+eid+'" class="mono" style="font-size:12px;color:var(--accent);font-weight:500;text-align:right">'+cu+'\u00a0\u20ac</span>'
+      // Col 5: Coste por unidad de medida real
+      +'<span id="cu_'+eid+'" class="mono" style="font-size:11px;color:var(--accent);font-weight:500;text-align:right;line-height:1.3">'+cu+'</span>'
+      // Col 6: Checkbox
       +'<input type="checkbox" '+(item._selected?'checked':'')+' onchange="toggleInv(\''+eid+'\',this.checked)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">'
       +'</div></div>';
   }).join('');
   noteEl.textContent='';
 }
-function recalcCU(eid){var item=invoiceItems.find(function(i){return 'ii_'+i._id.replace(/[^a-z0-9]/gi,'_')===eid;});if(!item)return;var el=document.getElementById('cu_'+eid);if(!el)return;var p=item.precio_caja||0;var c=item.cantidad||1;el.textContent=c>0?(p/c).toFixed(4).replace(/\.?0+$/,'')+'\u00a0\u20ac':'—';}
+function recalcCU(eid){var item=invoiceItems.find(function(i){return 'ii_'+i._id.replace(/[^a-z0-9]/gi,'_')===eid;});if(!item)return;var el=document.getElementById('cu_'+eid);if(!el)return;var p=item.precio_caja||0;var c=item.cantidad||1;var medVal=item.medida_unitaria;var medUnit=item.unidad_medida||item.unidad||'ud';if(medVal&&parseFloat(medVal)>0){var total=c*parseFloat(medVal);el.textContent=total>0?(p/total).toFixed(4).replace(/\.?0+$/,'')+'\u00a0\u20ac/'+medUnit:'—';}else{el.textContent=c>0?(p/c).toFixed(4).replace(/\.?0+$/,'')+'\u00a0\u20ac/'+item.unidad:'—';}}
 function updateInv(eid,field,val){var item=invoiceItems.find(function(i){return 'ii_'+i._id.replace(/[^a-z0-9]/gi,'_')===eid;});if(item){item[field]=val;if(field==='precio_caja')item.precio_total=val;}}
 function toggleInv(eid,checked){var item=invoiceItems.find(function(i){return 'ii_'+i._id.replace(/[^a-z0-9]/gi,'_')===eid;});if(item){item._selected=checked;var el=document.getElementById(eid);if(el)el.classList.toggle('selected',checked);}}
 function selectAllInvoice(){invoiceItems.forEach(function(i){i._selected=true;var eid='ii_'+i._id.replace(/[^a-z0-9]/gi,'_');var el=document.getElementById(eid);if(el){el.classList.add('selected');var cb=el.querySelector('input[type=checkbox]');if(cb)cb.checked=true;}});}
 function importSelected(){
   var sel=invoiceItems.filter(function(i){return i._selected;});if(!sel.length)return toast('Selecciona al menos un producto');
   var added=0,updated=0,skipped=0;var now=new Date().toISOString();
-  sel.forEach(function(item){if(!item.nombre||!item.precio_caja||!item.cantidad)return;var fd=item._fecha||now.slice(0,10);var pc=item.precio_caja;var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===item.nombre.toLowerCase();});if(ex){var ef=ex.facturaFecha||'2000-01-01';if(fd>=ef){ex.precio=pc;ex.cantidad=item.cantidad;ex.unidad=item.unidad;ex.costeUnit=item.cantidad>0?pc/item.cantidad:pc;ex.updatedAt=now;ex.facturaFecha=fd;updated++;}else{skipped++;}}else{DB.materias.push({id:genId(),nombre:item.nombre,precio:pc,cantidad:item.cantidad,unidad:item.unidad,costeUnit:item.cantidad>0?pc/item.cantidad:pc,createdAt:now,updatedAt:now,facturaFecha:fd});added++;}});
+  sel.forEach(function(item){if(!item.nombre||!item.precio_caja||!item.cantidad)return;var fd=item._fecha||now.slice(0,10);var pc=item.precio_caja;var cant=item.cantidad;var medVal=item.medida_unitaria;var medUnit=item.unidad_medida||item.unidad||'ud';var cuReal;if(medVal&&parseFloat(medVal)>0){cuReal=pc/(cant*parseFloat(medVal));}else{cuReal=cant>0?pc/cant:pc;}var ex=DB.materias.find(function(m){return m.nombre.toLowerCase()===item.nombre.toLowerCase();});if(ex){var ef=ex.facturaFecha||'2000-01-01';if(fd>=ef){ex.precio=pc;ex.cantidad=cant;ex.unidad=medUnit;ex.costeUnit=cuReal;ex.updatedAt=now;ex.facturaFecha=fd;updated++;}else{skipped++;}}else{DB.materias.push({id:genId(),nombre:item.nombre,precio:pc,cantidad:cant,unidad:medUnit,costeUnit:cuReal,createdAt:now,updatedAt:now,facturaFecha:fd});added++;}});
   saveLocal();scheduleSync();document.getElementById('invoice-results').style.display='none';invoiceItems=[];
   var msg='\u2713 '+added+' a\u00f1adido'+(added!==1?'s':'')+', '+updated+' actualizado'+(updated!==1?'s':'');if(skipped)msg+=', '+skipped+' omitido'+(skipped!==1?'s':'')+' (factura antigua)';
   toast(msg,3500);showPage('materias',document.querySelectorAll('.nav-item')[1]);
