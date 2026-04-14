@@ -535,9 +535,20 @@ async function loadFromCloud(){
       if(!Array.isArray(a.ingredientes))a.ingredientes=[];
       return a;
     });
-    saveLocal();renderMaterias();renderArticulos();renderDashboard();
+    // Deduplicar automáticamente después de cargar
+    var antesCount=DB.materias.length;
+    DB.materias=deduplicarSilencioso(DB.materias);
+    var eliminados=antesCount-DB.materias.length;
+    saveLocal();
+    // Si hubo duplicados, sincronizar de vuelta la versión limpia
+    if(eliminados>0){
+      syncToCloud(true);
+      toast('Cargado \u2713 \u2014 '+eliminados+' duplicado'+(eliminados!==1?'s':'')+' eliminado'+(eliminados!==1?'s':''),3500);
+    } else {
+      toast('Cargado \u2713');
+    }
+    renderMaterias();renderArticulos();renderDashboard();
     setSyncStatus('ok','Actualizado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));
-    toast('Cargado \u2713');
   }catch(e){
     setSyncStatus('error','Error: '+e.message.slice(0,40));
     toast('Error al cargar: '+e.message,5000);
@@ -988,44 +999,47 @@ function normNombre(n){
     .replace(/[^a-záéíóúüñ\s]/gi,' ')
     .replace(/\s+/g,' ').trim();
 }
-function deduplicarMaterias(){
-  if(!DB.materias.length)return toast('No hay ingredientes');
-  // Agrupar por nombre normalizado
+function deduplicarSilencioso(materias){
   var grupos={};
-  DB.materias.forEach(function(m){
+  materias.forEach(function(m){
     var key=normNombre(m.nombre);
     if(!grupos[key])grupos[key]=[];
     grupos[key].push(m);
   });
-  var eliminados=0;var nuevaLista=[];
+  var nuevaLista=[];
   Object.keys(grupos).forEach(function(key){
     var grupo=grupos[key];
     if(grupo.length===1){nuevaLista.push(grupo[0]);return;}
-    // Ordenar por facturaFecha desc, luego updatedAt desc → conservar el primero
     grupo.sort(function(a,b){
       var fa=a.facturaFecha||'2000-01-01';var fb=b.facturaFecha||'2000-01-01';
       if(fa!==fb)return fb.localeCompare(fa);
       return (b.updatedAt||'').localeCompare(a.updatedAt||'');
     });
-    // Elegir el ganador: el de fecha más reciente
     var ganador=grupo[0];
-    // Si alguno está en uso en artículos, asegurarse que el ganador conserve ese id
     var enUso=grupo.find(function(m){return DB.articulos.some(function(a){return(a.ingredientes||[]).some(function(i){return i.materiaId===m.id;});});});
     if(enUso&&enUso.id!==ganador.id){
-      // Actualizar artículos que apuntaban al ganador para apuntar al enUso
       DB.articulos.forEach(function(a){(a.ingredientes||[]).forEach(function(ing){if(ing.materiaId===ganador.id)ing.materiaId=enUso.id;});});
-      // Copiar datos del ganador (más reciente) al enUso
-      enUso.precio=ganador.precio;enUso.cantidad=ganador.cantidad;enUso.unidad=ganador.unidad;enUso.costeUnit=ganador.costeUnit;enUso.facturaFecha=ganador.facturaFecha;enUso.updatedAt=ganador.updatedAt;
-      // El ganador real ahora es enUso (con id original)
+      enUso.precio=ganador.precio;enUso.cantidad=ganador.cantidad;enUso.unidad=ganador.unidad;enUso.costeUnit=ganador.costeUnit;enUso.facturaFecha=ganador.facturaFecha;enUso.updatedAt=ganador.updatedAt;enUso.categoria=ganador.categoria||enUso.categoria;
       ganador=enUso;
     }
+    // Conservar categoría si el ganador no tiene una
+    if(!ganador.categoria||ganador.categoria==='otros'){
+      var conCat=grupo.find(function(m){return m.categoria&&m.categoria!=='otros';});
+      if(conCat)ganador.categoria=conCat.categoria;
+    }
     nuevaLista.push(ganador);
-    eliminados+=grupo.length-1;
   });
-  if(!eliminados)return toast('No se encontraron duplicados ✓');
-  DB.materias=nuevaLista;
+  return nuevaLista;
+}
+
+function deduplicarMaterias(){
+  if(!DB.materias.length)return toast('No hay ingredientes');
+  var antes=DB.materias.length;
+  DB.materias=deduplicarSilencioso(DB.materias);
+  var eliminados=antes-DB.materias.length;
+  if(!eliminados)return toast('No se encontraron duplicados \u2713');
   saveLocal();scheduleSync();renderMaterias();renderArticulos();renderDashboard();
-  toast('✓ '+eliminados+' duplicado'+(eliminados!==1?'s':'')+' eliminado'+(eliminados!==1?'s':''));
+  toast('\u2713 '+eliminados+' duplicado'+(eliminados!==1?'s':'')+' eliminado'+(eliminados!==1?'s':''));
 }
 
 // ── APPS SCRIPT CODE ──
