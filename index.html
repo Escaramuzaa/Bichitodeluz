@@ -425,7 +425,7 @@ var invoiceItems = [];
 var syncTimer = null;
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1';
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 var PROMPT_SISTEMA = `Actúa como experto en facturas de hostelería.
 
@@ -848,7 +848,7 @@ async function callGemini(parts, key){
   var payload = {
     contents: [{ parts: parts }],
     generationConfig: {
-      response_mime_type: 'application/json'
+      responseMimeType: 'application/json'
     }
   };
 
@@ -993,7 +993,7 @@ async function processFiles(files){
     }catch(e){
       statEl.textContent = 'Error';
       statEl.style.color = 'var(--danger)';
-      spinEl.style.animation = 'none';
+      spinEl.styleanimation = 'none';
       spinEl.style.borderColor = 'var(--danger)';
       toast('Error en ' + files[i].name + ': ' + e.message, 6000);
     }
