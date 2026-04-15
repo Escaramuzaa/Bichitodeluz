@@ -354,7 +354,7 @@ select option{background:var(--surface2)}
       <div class="card" style="margin-bottom:1rem">
         <div class="card-header"><span class="card-title">Añadir manualmente</span></div>
         <div class="card-body">
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
             <div class="field" style="margin:0"><label>Ingrediente</label><input type="text" id="mp-nombre" placeholder="Ej: leche entera…"></div>
             <div class="field" style="margin:0"><label>Categoría</label>
               <select id="mp-categoria"><option value="otros">Otros</option><option value="lácteos">Lácteos</option><option value="harinas y masas">Harinas y masas</option><option value="siropes y jarabes">Siropes y jarabes</option><option value="frutas y verduras">Frutas y verduras</option><option value="carnes y pescados">Carnes y pescados</option><option value="aceites y vinagres">Aceites y vinagres</option><option value="especias y salsas">Especias y salsas</option><option value="dulces y chocolates">Dulces y chocolates</option><option value="bebidas y aguas">Bebidas y aguas</option><option value="huevos">Huevos</option><option value="frutos secos">Frutos secos</option><option value="congelados">Congelados</option><option value="alcohol">Alcohol</option></select>
@@ -370,33 +370,35 @@ select option{background:var(--surface2)}
         </div>
       </div>
       <div class="card">
-        <div class="card-header" style="flex-wrap:wrap;gap:10px">
+        <div class="card-header">
           <span class="card-title">Inventario</span>
-          <div style="display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap">
-            <input type="text" id="mp-search" placeholder="Buscar ingrediente…" oninput="renderMaterias()" style="flex:1;min-width:160px;max-width:240px;background:var(--surface2)">
-            <select id="mp-filter-cat" onchange="renderMaterias()" style="background:var(--surface2);font-size:12px;padding:9px 10px;min-width:130px">
-              <option value="">Todas las categorías</option>
-              <option value="lácteos">Lácteos</option>
-              <option value="harinas y masas">Harinas y masas</option>
-              <option value="siropes y jarabes">Siropes</option>
-              <option value="frutas y verduras">Frutas y verduras</option>
-              <option value="carnes y pescados">Carnes y pescados</option>
-              <option value="aceites y vinagres">Aceites</option>
-              <option value="especias y salsas">Especias y salsas</option>
-              <option value="dulces y chocolates">Dulces</option>
-              <option value="bebidas y aguas">Bebidas</option>
-              <option value="huevos">Huevos</option>
-              <option value="frutos secos">Frutos secos</option>
-              <option value="congelados">Congelados</option>
-              <option value="alcohol">Alcohol</option>
-              <option value="otros">Otros</option>
-            </select>
+          <div style="display:flex;align-items:center;gap:8px">
             <span id="mp-count" style="font-size:12px;color:var(--text3);white-space:nowrap"></span>
             <button class="btn btn-sm btn-ghost" onclick="deduplicarMaterias()" style="gap:5px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>
               Deduplicar
             </button>
           </div>
+        </div>
+        <div style="padding:10px 1.25rem;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="mp-search" placeholder="Buscar ingrediente…" oninput="renderMaterias()" style="flex:1;min-width:140px;background:var(--surface2)">
+          <select id="mp-filter-cat" onchange="renderMaterias()" style="background:var(--surface2);font-size:12px;padding:9px 10px;flex:1;min-width:130px">
+            <option value="">Todas las categorías</option>
+            <option value="lácteos">Lácteos</option>
+            <option value="harinas y masas">Harinas y masas</option>
+            <option value="siropes y jarabes">Siropes</option>
+            <option value="frutas y verduras">Frutas y verduras</option>
+            <option value="carnes y pescados">Carnes y pescados</option>
+            <option value="aceites y vinagres">Aceites</option>
+            <option value="especias y salsas">Especias y salsas</option>
+            <option value="dulces y chocolates">Dulces</option>
+            <option value="bebidas y aguas">Bebidas</option>
+            <option value="huevos">Huevos</option>
+            <option value="frutos secos">Frutos secos</option>
+            <option value="congelados">Congelados</option>
+            <option value="alcohol">Alcohol</option>
+            <option value="otros">Otros</option>
+          </select>
         </div>
         <div id="mp-table"><div class="empty"><div class="empty-icon">⊞</div><div class="empty-title">Sin ingredientes</div><div class="empty-desc">Añade uno o importa desde una factura</div></div></div>
       </div>
@@ -819,13 +821,24 @@ async function loadData(){
 async function saveMateria(m){
   setSyncStatus('syncing','Guardando…');
   var payload={
-    id:m.id, nombre:m.nombre, categoria:m.categoria||'otros',
-    precio:m.precio, cantidad:m.cantidad, unidad:m.unidad,
-    coste_unit:m.costeUnit, factura_fecha:m.facturaFecha||null,
+    id:m.id,
+    nombre:m.nombre,
+    categoria:m.categoria||'otros',
+    precio:m.precio||0,
+    cantidad:m.cantidad||1,
+    unidad:m.unidad||'ud',
+    coste_unit:m.costeUnit||m.coste_unit||0,
+    factura_fecha:m.facturaFecha||m.factura_fecha||null,
+    created_at:m.created_at||new Date().toISOString(),
     updated_at:new Date().toISOString()
   };
-  var {error} = await sb.from('materias').upsert(payload,{onConflict:'id'});
-  if(error){setSyncStatus('error','Error');toast('Error: '+error.message,4000);return false;}
+  var res=await sb.from('materias').upsert(payload,{onConflict:'id'});
+  if(res.error){
+    setSyncStatus('error','Error al guardar');
+    toast('Error al guardar "'+m.nombre+'": '+res.error.message,5000);
+    console.error('saveMateria error:',res.error);
+    return false;
+  }
   setSyncStatus('ok','Guardado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));
   return true;
 }
@@ -839,13 +852,21 @@ async function deleteMateriaSB(id){
 async function saveArticulo_SB(a){
   setSyncStatus('syncing','Guardando…');
   var payload={
-    id:a.id, nombre:a.nombre, categoria:a.categoria||'',
-    precio_venta:a.precioVenta||null,
+    id:a.id,
+    nombre:a.nombre,
+    categoria:a.categoria||'',
+    precio_venta:a.precioVenta||a.precio_venta||null,
     ingredientes:JSON.stringify(a.ingredientes||[]),
+    created_at:a.created_at||new Date().toISOString(),
     updated_at:new Date().toISOString()
   };
-  var {error} = await sb.from('articulos').upsert(payload,{onConflict:'id'});
-  if(error){setSyncStatus('error','Error');toast('Error: '+error.message,4000);return false;}
+  var res=await sb.from('articulos').upsert(payload,{onConflict:'id'});
+  if(res.error){
+    setSyncStatus('error','Error al guardar');
+    toast('Error al guardar "'+a.nombre+'": '+res.error.message,5000);
+    console.error('saveArticulo error:',res.error);
+    return false;
+  }
   setSyncStatus('ok','Guardado '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}));
   return true;
 }
